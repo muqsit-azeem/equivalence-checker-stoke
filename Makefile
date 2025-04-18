@@ -213,7 +213,11 @@ SRC_OBJ=\
 	src/validator/handlers/strata_handler.o \
 	src/validator/handlers/pseudo_handler.o \
 	\
-	src/verifier/hold_out.o
+	src/verifier/hold_out.o\
+	\
+	src/no_data_validator/validator.o\
+	src/no_data_validator/RegEx.o\
+	src/no_data_validator/operation.o
 
 ifndef NOCVC4
 SRC_OBJ += 	src/solver/cvc4solver.o
@@ -417,6 +421,11 @@ src/validator/invariants.h: .FORCE
 	cmp -s $@ src/validator/invariants-tmp || mv src/validator/invariants-tmp $@;
 	rm -f src/validator/invariants-tmp
 
+src/no_data_validator/operations.h: .FORCE
+	src/validator/generate_regex_h.sh src/no_data_validator operations-tmp; \
+	cmp -s $@ src/no_data_validator/operations-tmp || mv src/no_data_validator/operations-tmp $@;
+	rm -f src/no_data_validator/operations-tmp
+
 ##### BUILD TARGETS
 
 src/cfg/%.o: src/cfg/%.cc $(DEPS)
@@ -450,6 +459,9 @@ src/validator/handlers/%.o: src/validator/handlers/%.cc $(DEPS)
 src/validator/%.o: src/validator/%.cc $(DEPS)
 	$(STOKE_CXX) $(TARGET) $(OPT) $(ARCH_OPT) $(INC) -c $< -o $@
 src/verifier/%.o: src/verifier/%.cc $(DEPS)
+	$(STOKE_CXX) $(TARGET) $(OPT) $(ARCH_OPT) $(INC) -c $< -o $@
+
+src/no_data_validator/%.o: src/no_data_validator/%.cc $(DEPS)
 	$(STOKE_CXX) $(TARGET) $(OPT) $(ARCH_OPT) $(INC) -c $< -o $@
 
 tools/io/%.o: tools/io/%.cc $(DEPS)

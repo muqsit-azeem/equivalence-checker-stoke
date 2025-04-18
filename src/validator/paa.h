@@ -341,7 +341,7 @@ public:
   void serialize(std::ostream& os) const;
   static ProgramAlignmentAutomata deserialize(std::istream& is);
 
-private:
+protected:
 
   /** This is a data structure used in learn_state_data and its helpers
     to track the possible states that the automata can be in starting from

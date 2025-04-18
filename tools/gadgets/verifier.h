@@ -30,6 +30,7 @@
 #include "src/verifier/none.h"
 #include "src/verifier/sequence.h"
 #include "src/verifier/verifier.h"
+#include "src/no_data_validator/validator.h"
 
 #include "tools/args/bounded_validator.inc"
 #include "tools/args/ddec_validator.inc"
@@ -199,8 +200,34 @@ private:
       return ddec;
     } else if (s == "hold_out") {
       return new HoldOutVerifier(sandbox, fxn);
-    } else if (s == "none") {
+    } else if (s == "none")
+    {
       return new NoneVerifier();
+    } else if (s == "no_data") {
+      oc_ = new ObligationCheckerGadget();
+      auto no_data = new NoDataValidator(*oc_, sandbox, inv);
+      no_data->set_bound(target_bound_arg.value(), rewrite_bound_arg.value());
+      no_data->set_training_set_size(training_set_size_arg.value());
+      auto align_pred = alignment_predicate_arg.value();
+      if (align_pred.size()) {
+        auto expr = ExprInvariant::parse(align_pred);
+        auto inv = std::make_shared<ExprInvariant>(expr, align_pred);
+        if (alignment_predicate_heap_arg.value()) {
+          auto conj = std::make_shared<ConjunctionInvariant>();
+          conj->add_invariant(inv);
+          conj->add_invariant(std::make_shared<MemoryEqualityInvariant>());
+          auto casted = std::dynamic_pointer_cast<Invariant>(conj);
+          no_data->set_alignment_predicate(casted);
+        } else {
+          auto casted = std::dynamic_pointer_cast<Invariant>(inv);
+          no_data->set_alignment_predicate(casted);
+        }
+
+      }
+      add_pointer_ranges(*no_data);
+      add_assumptions(*no_data);
+      add_readonly_memory(*no_data);
+      return no_data;
     } else {
       std::cerr << "Unrecognized verifier name \"" << s << "\"" << std::endl;
       exit(1);
