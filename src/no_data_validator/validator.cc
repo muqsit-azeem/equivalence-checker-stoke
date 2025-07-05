@@ -16,6 +16,8 @@
 #include <algorithm>
 #include <set>
 
+#include "symbolic_instruction_processor.h"
+
 using namespace std;
 using namespace std::chrono;
 using namespace stoke;
@@ -41,6 +43,15 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
     ++S_1;
     S_2 = rewrite_.reachable_begin();
   }
+
+  // memory set up
+  SymState target_sym_state;
+  FlatMemory target_memory(false);
+  target_sym_state.memory = &target_memory;
+
+  SymState rewrite_sym_state;
+  FlatMemory rewrite_memory(false);
+  rewrite_sym_state.memory = &rewrite_memory;
 
   std::vector<std::pair<size_t, size_t>> reach;
   std::set<std::pair<size_t, size_t>> visited;
@@ -92,10 +103,56 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
   return false;
 }
 
-void NoDataValidator::printing_cfg()
-{
-  auto target = rewrite_;
+void NoDataValidator::printing_cfg() {
+  auto target = target_;
   cout << "********************" << "PRINTING CFG" << "********************" << endl;
+
+  cout << "Summary:" << endl;
+
+  auto states = target.reachable_begin();
+  SymState sym_state("test", true);
+  FlatMemory sym_memory(false);
+  sym_state.memory = &sym_memory;
+
+  auto count = target.num_reachable();
+  for (size_t _ = 0; _ < count; ++_)
+  {
+    cout << "For block: " << *states << endl;
+    auto instruction = target.instr_begin(*states);
+    while (instruction != target.instr_end(*states))
+    {
+      const x64asm::Instruction& inst = *instruction;
+      cout << "Instruction: " <<*instruction << endl;
+      std::cout << endl;
+      std::cout << sym_state << endl;
+      std::cout << std::endl;
+      for (auto reg: sym_state.rf)
+      {
+        std::cout << reg << " ";
+      }
+      std::cout << endl;
+      std::cout << std::endl;
+      std::cout << "Instruction processing" << std::endl;
+      /*std::cout << "  Must Read:    " << target.must_read_set(*instruction) << std::endl;
+      std::cout << "  Must Write:   " << target.must_write_set(*instruction) << std::endl;
+      std::cout << "  Must Undef:   " << target.must_undef_set(*instruction) << std::endl;
+      std::cout << "  Maybe Read:   " << target.maybe_read_set(*instruction) << std::endl;
+      std::cout << "  Maybe Write:  " << target.maybe_write_set(*instruction) << std::endl;
+      std::cout << "  Maybe Undef:  " << target.maybe_undef_set(*instruction) << std::endl;*/
+      SymbolicInstructionProcessor::process_instruction(&sym_state, inst, false);
+      std::cout << endl;
+      std::cout << sym_state << endl;
+      std::cout << std::endl;
+      for (auto reg: sym_state.rf)
+      {
+        std::cout << reg << " ";
+      }
+      std::cout << endl;
+      std::cout << std::endl;
+      ++instruction;
+    }
+    ++states;
+  }
 
   cout << "Target: " << endl;
   cout << target.get_code() << endl;
