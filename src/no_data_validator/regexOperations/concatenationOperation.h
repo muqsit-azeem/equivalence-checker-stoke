@@ -20,7 +20,13 @@ public:
     symbol_ = '.';
   }
 
+  // prev_subexpresion . subexpresion
   void add_subexpression(std::shared_ptr<Operation> subexpression) {
+    if (subexpression->isEmpty()) {return;}
+    if (auto concat_operation = std::dynamic_pointer_cast<ConcatenationOperation>(subexpression)) {
+      subexpressions_.insert(subexpressions_.end(), concat_operation->subexpressions_.begin(), concat_operation->subexpressions_.end());
+      return;
+    }
     subexpressions_.push_back(subexpression);
   }
 

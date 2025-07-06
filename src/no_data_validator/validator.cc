@@ -78,7 +78,7 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
       std::shared_ptr<Operation> rewrite_regex;
 
       INPUT_STOP(".getRegex")
-      if (!target_Regex.getRegex(qi_1, qi_2, target_regex) || !rewrite_Regex.getRegex(qj_1, qj_2, rewrite_regex)) {
+      if (!target_Regex.getRegex(qi_1, qi_2, target_regex, true) || !rewrite_Regex.getRegex(qj_1, qj_2, rewrite_regex, true)) {
         std::cout << "FALSE" << std::endl;
         continue;
       }
