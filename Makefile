@@ -217,7 +217,8 @@ SRC_OBJ=\
 	\
 	src/no_data_validator/validator.o\
 	src/no_data_validator/RegEx.o\
-	src/no_data_validator/operation.o
+	src/no_data_validator/operation.o\
+	src/no_data_validator/smt_alignment_checker.o\
 
 ifndef NOCVC4
 SRC_OBJ += 	src/solver/cvc4solver.o
