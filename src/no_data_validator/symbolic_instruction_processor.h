@@ -14,6 +14,7 @@
 #include "src/opcode.h"
 
 #include <regex>
+#include "regexOperations/empty.h"
 
 using namespace std;
 using namespace cpputil;
@@ -30,26 +31,60 @@ namespace stoke {
 
 
 class SymbolicInstructionProcessor final{
-
 public:
-  static bool process_instruction(SymState* sym_state, const x64asm::Instruction& instruction, bool is_condition) {
-    auto opcode = instruction.get_opcode();
-    auto arity = instruction.arity();
+    // Regex is already split therefore doesn't contain any Plus Operations
+    static size_t process_regex(SymState* sym_state, std::shared_ptr<Operation> regex, const Cfg* cfg, size_t falltrought, bool is_star) {
+      std::cout << "process_regex" << std::endl;
+
+      if (regex->isEmpty()) { return std::numeric_limits<size_t>::max(); }
+      if (auto casted_regex = std::dynamic_pointer_cast<Symbol>(regex)) {
+        size_t cfg_state = casted_regex->getNumber();
+
+        bool is_jump;
+        if (cfg->has_conditional_target(cfg_state)){
+          cfg->fallthrough_target(falltrought) == cfg_state ? is_jump = false : is_jump = true;
+        } else {is_jump = false;}
+
+        auto instruction = cfg->instr_begin(cfg_state);
+        while (instruction!= cfg->instr_end(cfg_state)) {
+
+          process_instruction(sym_state, &*instruction, is_jump, is_star);
+          instruction++;
+        }
+        return cfg_state;
+      }
+
+      if (std::dynamic_pointer_cast<Symbol>(regex)){ is_star = true;}
+
+      size_t last_block = std::numeric_limits<size_t>::max();
+      // concatenation or star operation
+      for (auto operation : regex->getSubexpressions()) {
+        last_block = process_regex(sym_state, operation, cfg, falltrought, is_star);
+        falltrought = cfg->has_fallthrough_target(last_block) ? cfg->fallthrough_target(last_block) : std::numeric_limits<size_t>::max();
+      }
+      return last_block;
+    }
+
+//private:   // due to testing
+  // TODO: add star function
+  static bool process_instruction(SymState* sym_state, const x64asm::Instruction* instruction, bool is_condition, bool is_star) {
+    auto opcode = instruction->get_opcode();
+    auto arity = instruction->arity();
 
     std::cout << "Opcode: " << opcode << " Arity: " << arity << std::endl;
 
     switch (opcode)
     {
     case x64asm::TEST_R32_R32: {
-        auto reg_1 = instruction.get_operand<x64asm::R32>(0);
-        auto reg_2 = instruction.get_operand<x64asm::R32>(1);
+        auto reg_1 = instruction->get_operand<x64asm::R32>(0);
+        auto reg_2 = instruction->get_operand<x64asm::R32>(1);
         auto temp = SymBitVector::constant(8,  reg_1 & reg_2);
         sym_state->set_szp_flags(temp);
         break;
     }
     case x64asm::TEST_R8_IMM8: {
-        auto reg = instruction.get_operand<x64asm::R8>(0);
-        auto num = instruction.get_operand<x64asm::Imm8>(1);
+        auto reg = instruction->get_operand<x64asm::R8>(0);
+        auto num = instruction->get_operand<x64asm::Imm8>(1);
         auto temp = SymBitVector::constant(8,  reg & num);
         sym_state->set_szp_flags(temp);
         break;
@@ -77,7 +112,7 @@ public:
         break;
     }
     case x64asm::NOT_M32:{
-      auto mem = instruction.get_operand<x64asm::M32>(0);
+      auto mem = instruction->get_operand<x64asm::M32>(0);
       auto addres = sym_state->get_addr(mem);
       //std::cout << "M32: " << mem << " On the adress: " << addres << endl;
       DereferenceInfo dereference;
@@ -87,7 +122,7 @@ public:
       break;
     }
     case x64asm::NOT_M64: {
-        auto mem = instruction.get_operand<x64asm::M64>(0);
+        auto mem = instruction->get_operand<x64asm::M64>(0);
         auto addres = sym_state->get_addr(mem);
         DereferenceInfo dereference;
         auto value = (sym_state->memory)->read(addres, 64, dereference).first;
@@ -125,8 +160,8 @@ public:
       break;
     case x64asm::ADD_R64_IMM32:
       {
-        auto reg = instruction.get_operand<x64asm::R64>(0);
-        auto num = instruction.get_operand<x64asm::Imm32>(1);
+        auto reg = instruction->get_operand<x64asm::R64>(0);
+        auto num = instruction->get_operand<x64asm::Imm32>(1);
         auto temp = sym_state->gp[reg] + SymBitVector::constant(32, num);
         sym_state->set(reg, temp);
         break;
@@ -134,8 +169,8 @@ public:
     case x64asm::ADD_R64_IMM8:
       {
 
-        auto reg = instruction.get_operand<x64asm::R64>(0);
-        auto num = instruction.get_operand<x64asm::Imm8>(1);
+        auto reg = instruction->get_operand<x64asm::R64>(0);
+        auto num = instruction->get_operand<x64asm::Imm8>(1);
         //std::cout << "Reg: " << reg << " Num: " << num << std::endl;
         //std::cout << "Symbolic register: " << sym_state->gp[reg] << std::endl;
         auto temp = sym_state->gp[reg] + SymBitVector::constant(8, num);
@@ -145,8 +180,8 @@ public:
       }
     case x64asm::ADD_R64_M64:
     case x64asm::ADD_R64_R64: { //addq_r64_r64
-        x64asm::R64 reg_1 = instruction.get_operand<x64asm::R64>(0);
-        x64asm::R64 reg_2 = instruction.get_operand<x64asm::R64>(1);
+        x64asm::R64 reg_1 = instruction->get_operand<x64asm::R64>(0);
+        x64asm::R64 reg_2 = instruction->get_operand<x64asm::R64>(1);
         add_subtract_operations(sym_state, reg_1, sym_state->gp[reg_2], true);
     }
     case x64asm::ADD_R64_R64_1:
@@ -166,8 +201,8 @@ public:
       break;
 
     case x64asm::SUB_R32_IMM8: {
-        auto reg = instruction.get_operand<x64asm::R32>(0);
-        SymBitVector num = SymBitVector::constant(8,instruction.get_operand<x64asm::Imm8>(1));
+        auto reg = instruction->get_operand<x64asm::R32>(0);
+        SymBitVector num = SymBitVector::constant(8,instruction->get_operand<x64asm::Imm8>(1));
         add_subtract_operations(sym_state, reg,  num, false);
         /*
         std::cout << "Reg: " << reg << " Num: " << num << std::endl;
@@ -184,14 +219,14 @@ public:
     case x64asm::RET:
       break;
     case x64asm::MOV_R64_R64: { //movq_r64_r64 Arity: 2
-        auto reg_1 = instruction.get_operand<x64asm::R64>(0);
-        auto reg_2 = instruction.get_operand<x64asm::R64>(1);
+        auto reg_1 = instruction->get_operand<x64asm::R64>(0);
+        auto reg_2 = instruction->get_operand<x64asm::R64>(1);
         sym_state->set(reg_1, sym_state->gp[reg_2]);
         break;
     }
     case x64asm::LEA_R32_M16: { //leal_r32_m16 Arity: 2
-      auto reg = instruction.get_operand<x64asm::R32>(0);
-      auto mem = instruction.get_operand<x64asm::M16>(1);
+      auto reg = instruction->get_operand<x64asm::R32>(0);
+      auto mem = instruction->get_operand<x64asm::M16>(1);
       auto mem_loc = sym_state->get_addr(mem);
       DereferenceInfo dereference_info;
       sym_state->set(reg, (sym_state->memory->read(mem_loc, 16, dereference_info)).first);
@@ -199,16 +234,16 @@ public:
       break;
     }
     case x64asm::LEA_R64_M16: { //leaq_r64_m16 Arity: 2
-      auto reg = instruction.get_operand<x64asm::R64>(0);
-      auto mem = instruction.get_operand<x64asm::M16>(1);
+      auto reg = instruction->get_operand<x64asm::R64>(0);
+      auto mem = instruction->get_operand<x64asm::M16>(1);
       auto mem_loc = sym_state->get_addr(mem);
       DereferenceInfo dereference_info;
       sym_state->set(reg, (sym_state->memory->read(mem_loc, 16, dereference_info)).first);
       break;
     }
     case x64asm::CMP_R64_R64: {
-      auto reg_1 = instruction.get_operand<x64asm::R64>(0);
-      auto reg_2 = instruction.get_operand<x64asm::R64>(1);
+      auto reg_1 = instruction->get_operand<x64asm::R64>(0);
+      auto reg_2 = instruction->get_operand<x64asm::R64>(1);
       auto temp = sym_state->gp[reg_2] - sym_state->gp[reg_1];
       sym_state->set_szp_flags(temp);
       break;

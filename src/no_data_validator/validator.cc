@@ -15,6 +15,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <set>
+#include <queue>
 
 #include "symbolic_instruction_processor.h"
 
@@ -22,12 +23,14 @@ using namespace std;
 using namespace std::chrono;
 using namespace stoke;
 using namespace x64asm;
+using State = stoke::ProgramAlignmentAutomata::State;
 
 #define INPUT_STOP(X) { std::cout << "****************" << X << "****************" << std::endl; std::string input; std::cin >> input; }
 #define SPACE() { std::cout << " " << std::endl;}
 
 bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invariant> inv, ProgramAlignmentAutomata& paa) {
   //printing_cfg();
+  std::map<std::tuple<State,State>, std::tuple<std::shared_ptr<Operation>, std::shared_ptr<Operation>>> T;
 
   auto S_1 = target_.reachable_begin();
   size_t num_s_1 = target_.num_reachable();
@@ -44,30 +47,23 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
     S_2 = rewrite_.reachable_begin();
   }
 
-  // memory set up
-  SymState target_sym_state;
-  FlatMemory target_memory(false);
-  target_sym_state.memory = &target_memory;
 
-  SymState rewrite_sym_state;
-  FlatMemory rewrite_memory(false);
-  rewrite_sym_state.memory = &rewrite_memory;
-
-  std::vector<std::pair<size_t, size_t>> reach;
+  std::queue<std::pair<size_t, size_t>> reach;
   std::set<std::pair<size_t, size_t>> visited;
 
-  reach.push_back(std::make_pair((size_t) target_.get_entry(), rewrite_.get_entry()));
-  size_t reach_size = 1;
-  size_t i = 0;
+  reach.push(std::make_pair((size_t) target_.get_entry(), rewrite_.get_entry()));
 
-  while (i<reach_size) {
-    if (visited.count(reach[i]) > 0) { // if chosen state is already visited
-      ++i;
+  while (!reach.empty()) {
+    std::pair<size_t, size_t> state = reach.front();
+    reach.pop();
+
+    if (visited.count(state) > 0) { // if chosen state is already visited
       continue;
     }
-    size_t qi_1 = reach[i].first;
-    size_t qj_1 = reach[i].second;
-    visited.insert(reach[i]);
+
+    size_t qi_1 = state.first;
+    size_t qj_1 = state.second;
+    visited.insert(state);
 
     for (auto pair: S) {
       size_t qi_2 = pair.first;
@@ -79,30 +75,65 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
 
       INPUT_STOP(".getRegex")
       if (!target_Regex.getRegex(qi_1, qi_2, target_regex, true) || !rewrite_Regex.getRegex(qj_1, qj_2, rewrite_regex, true)) {
-        std::cout << "FALSE" << std::endl;
+        std::cout << "FALSE 01" << std::endl;
         continue;
       }
 
-      /*
-      if (qi_1 == qi_2 && qj_1 == qj_2) {
-        std::vector<std::shared_ptr<Operation>> exprs;
-        exprs.push_back(std::make_shared<Symbol>());
-        auto plusOp = std::make_shared<PlusOperation>(exprs);
+      if (qi_1 == qi_2 && qj_1 == qj_2 && (target_regex->isEmpty() || rewrite_regex->isEmpty())) {
+        std::cout << "FALSE 02" << std::endl;
+        continue;
+      }
 
-        if (target_regex == plusOp || rewrite_regex == plusOp) {
-          continue;
+      //splitting
+      std::vector<std::shared_ptr<Operation>> R_i, R_j;
+
+      if (std::dynamic_pointer_cast<PlusOperation>(target_regex)) {
+        R_i = target_regex->getSubexpressions();
+      } else {
+        R_i.push_back(target_regex);
+      }
+
+      if (std::dynamic_pointer_cast<PlusOperation>(rewrite_regex)) {
+        R_j = rewrite_regex->getSubexpressions();
+      } else {
+        R_j.push_back(rewrite_regex);
+      }
+
+      //comparing
+      for (auto r_i : R_i) {
+        for (auto r_j : R_j) {
+          std::shared_ptr<Operation> rc_i, rc_j; // may not be needed, if SAT initialized in check
+          if (alignment_checker_->check(inv, &target_, &rewrite_, r_i, r_j, false)) {
+            State from_state(qi_1, qj_1);
+            State to_state(qi_2, qj_2);
+            T[std::make_pair(from_state, to_state)] = std::make_pair(r_i, r_j);
+            reach.push(std::make_pair((size_t) qi_2, qj_2));
+
+          }
         }
       }
-      */
-      // TO DO: finish comparing the regexes and splitting
-
 
     }
-    ++i;
   }
   return false;
 }
+/*
+bool NoDataValidator::smt_solution(shared_ptr<Operation> r_i, shared_ptr<Operation> r_j) {
+  // memory set up
+  SymState target_sym_state;
+  FlatMemory target_memory(false);
+  target_sym_state.memory = &target_memory;
 
+  SymState rewrite_sym_state;
+  FlatMemory rewrite_memory(false);
+  rewrite_sym_state.memory = &rewrite_memory;
+
+  auto bool_vector = target_sym_state.equality_constraints(rewrite_sym_state);
+  return solver_->is_sat(bool_vector);
+}
+*/
+
+//debuging function
 void NoDataValidator::printing_cfg() {
   auto target = target_;
   cout << "********************" << "PRINTING CFG" << "********************" << endl;
@@ -139,7 +170,7 @@ void NoDataValidator::printing_cfg() {
       std::cout << "  Maybe Read:   " << target.maybe_read_set(*instruction) << std::endl;
       std::cout << "  Maybe Write:  " << target.maybe_write_set(*instruction) << std::endl;
       std::cout << "  Maybe Undef:  " << target.maybe_undef_set(*instruction) << std::endl;*/
-      SymbolicInstructionProcessor::process_instruction(&sym_state, inst, false);
+      SymbolicInstructionProcessor::process_instruction(&sym_state, &inst, false, false);
       std::cout << endl;
       std::cout << sym_state << endl;
       std::cout << std::endl;

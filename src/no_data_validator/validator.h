@@ -2,6 +2,10 @@
 #ifndef STOKE_SRC_VALIDATOR_NODATA_H
 #define STOKE_SRC_VALIDATOR_NODATA_H
 
+#include "operation.h"
+#include "smt_alignment_checker.h"
+#include "cvc4/expr/datatype.h"
+#include "src/solver/cvc4solver.h"
 #include "src/validator/paa.h"
 #include "src/validator/data_collector.h"
 #include "src/validator/invariant.h"
@@ -17,12 +21,20 @@ class NoDataValidator : public DdecValidator {
 public:
 
     NoDataValidator(ObligationChecker& checker, Sandbox& sandbox, InvariantLearner& inv)
-      : DdecValidator(checker, sandbox, inv) {}
+      : DdecValidator(checker, sandbox, inv) {
+      solver_ = new Cvc4Solver();
+      alignment_checker_ = new SmtAlignmentChecker(solver_);
+    }
 
     NoDataValidator(const NoDataValidator& rhs) : DdecValidator(rhs) {}
 
     void printing_cfg();
     bool build_paa_for_alignment_predicate(std::shared_ptr<Invariant> inv, ProgramAlignmentAutomata& paa) override;
+    //bool smt_solution(std::shared_ptr<Operation> r_i, std::shared_ptr<Operation> r_j);
+
+private:
+  SmtAlignmentChecker* alignment_checker_;
+  SMTSolver* solver_;
 };
 
 } // namespace stoke
