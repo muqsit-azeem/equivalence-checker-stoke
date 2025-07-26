@@ -34,7 +34,7 @@ class SymbolicInstructionProcessor final{
 public:
     // Regex is already split therefore doesn't contain any Plus Operations
     static size_t process_regex(SymState* sym_state, std::shared_ptr<Operation> regex, const Cfg* cfg, size_t falltrought, bool is_star) {
-      std::cout << "process_regex" << std::endl;
+      std::cout << "process regex: " << *regex << ":"<< std::endl;
 
       if (regex->isEmpty()) { return std::numeric_limits<size_t>::max(); }
       if (auto casted_regex = std::dynamic_pointer_cast<Symbol>(regex)) {
@@ -47,7 +47,7 @@ public:
 
         auto instruction = cfg->instr_begin(cfg_state);
         while (instruction!= cfg->instr_end(cfg_state)) {
-
+          std::cout << *instruction << std::endl;
           process_instruction(sym_state, &*instruction, is_jump, is_star);
           instruction++;
         }
@@ -182,7 +182,7 @@ public:
     case x64asm::ADD_R64_R64: { //addq_r64_r64
         x64asm::R64 reg_1 = instruction->get_operand<x64asm::R64>(0);
         x64asm::R64 reg_2 = instruction->get_operand<x64asm::R64>(1);
-        add_subtract_operations(sym_state, reg_1, sym_state->gp[reg_2], true);
+        add_subtract_operations(sym_state, reg_1, sym_state->gp[reg_2], true, is_star);
     }
     case x64asm::ADD_R64_R64_1:
     case x64asm::ADD_R8_IMM8:
@@ -203,7 +203,7 @@ public:
     case x64asm::SUB_R32_IMM8: {
         auto reg = instruction->get_operand<x64asm::R32>(0);
         SymBitVector num = SymBitVector::constant(8,instruction->get_operand<x64asm::Imm8>(1));
-        add_subtract_operations(sym_state, reg,  num, false);
+        add_subtract_operations(sym_state, reg,  num, false, is_star);
         /*
         std::cout << "Reg: " << reg << " Num: " << num << std::endl;
         std::cout << "Symbolic register: " << sym_state->gp[reg] << std::endl;
@@ -259,14 +259,17 @@ private:
   SymbolicInstructionProcessor() {}
 
   template<typename T1>
-  static void add_subtract_operations(SymState* sym_state, const T1 reg, const SymBitVector num, bool is_add) {
+  static void add_subtract_operations(SymState* sym_state, const T1 reg, const SymBitVector num, bool is_add, bool is_star) {
     if (std::is_same<T1, x64asm::R64>::value || std::is_same<T1, x64asm::R32>::value
       || std::is_same<T1, x64asm::R16>::value || std::is_same<T1, x64asm::R8>::value) {
-      SymBitVector temp;
-      is_add
-        ? temp = sym_state->gp[reg]+ num
-        : temp = sym_state->gp[reg] - num;
+      SymBitVector temp, star_variable;
+      if (is_add) {
+        is_star ? temp = sym_state->gp[reg] + star_variable * num : temp = sym_state->gp[reg]+ num;
+      } else {
+        is_star ? temp = sym_state->gp[reg] - star_variable * num : temp = sym_state->gp[reg] - num;
+      }
       sym_state->set(reg, temp);
+      sym_state->set_szp_flags(temp);
     } else
     {
       /*

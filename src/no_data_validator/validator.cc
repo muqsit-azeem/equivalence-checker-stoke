@@ -30,10 +30,12 @@ using State = stoke::ProgramAlignmentAutomata::State;
 
 bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invariant> inv, ProgramAlignmentAutomata& paa) {
   //printing_cfg();
-  std::map<std::tuple<State,State>, std::tuple<std::shared_ptr<Operation>, std::shared_ptr<Operation>>> T;
+
+  std::map<std::tuple<State,State>, std::tuple<std::shared_ptr<Operation>, std::shared_ptr<Operation>>> T; // no support for multiple paths from one state to other
 
   auto S_1 = target_.reachable_begin();
   size_t num_s_1 = target_.num_reachable();
+
   auto S_2 = rewrite_.reachable_begin();
   size_t num_s_2 = rewrite_.num_reachable();
 
@@ -47,6 +49,13 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
     S_2 = rewrite_.reachable_begin();
   }
 
+  /*
+  std::cout << "Pairs: " << std::endl;
+  for (auto i : S) {
+    std::cout << "(" << i.first << ", " << i.second << "), ";
+  }
+  std::cout << std::endl;
+  */
 
   std::queue<std::pair<size_t, size_t>> reach;
   std::set<std::pair<size_t, size_t>> visited;
@@ -66,6 +75,9 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
     visited.insert(state);
 
     for (auto pair: S) {
+      INPUT_STOP("NEW PAIRING")
+      std::cout << "qi_1: "<< state.first << "    qj_1: " << state.second << std::endl;
+      std::cout << "qi_2: "<< pair.first << "    qj_2: " << pair.second << std::endl;
       size_t qi_2 = pair.first;
       size_t qj_2 = pair.second;
       RegEx target_Regex(target_);
@@ -73,7 +85,6 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
       std::shared_ptr<Operation> target_regex;
       std::shared_ptr<Operation> rewrite_regex;
 
-      INPUT_STOP(".getRegex")
       if (!target_Regex.getRegex(qi_1, qi_2, target_regex, true) || !rewrite_Regex.getRegex(qj_1, qj_2, rewrite_regex, true)) {
         std::cout << "FALSE 01" << std::endl;
         continue;
@@ -83,6 +94,9 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
         std::cout << "FALSE 02" << std::endl;
         continue;
       }
+
+      //std::cout << std::endl;
+      //continue;
 
       //splitting
       std::vector<std::shared_ptr<Operation>> R_i, R_j;
@@ -102,6 +116,7 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
       //comparing
       for (auto r_i : R_i) {
         for (auto r_j : R_j) {
+          std::cout << "r_i: " << *r_i << "   r_j: " << *r_j << std::endl;
           std::shared_ptr<Operation> rc_i, rc_j; // may not be needed, if SAT initialized in check
           if (alignment_checker_->check(inv, &target_, &rewrite_, r_i, r_j, false)) {
             State from_state(qi_1, qj_1);
@@ -135,7 +150,7 @@ bool NoDataValidator::smt_solution(shared_ptr<Operation> r_i, shared_ptr<Operati
 
 //debuging function
 void NoDataValidator::printing_cfg() {
-  auto target = target_;
+  auto target = rewrite_;
   cout << "********************" << "PRINTING CFG" << "********************" << endl;
 
   cout << "Summary:" << endl;

@@ -26,6 +26,8 @@ namespace stoke {
 
     char getSymbol() const {return symbol_;}
 
+    virtual bool equals(const Operation& other) const = 0;
+
   protected:
     char symbol_;
     std::vector<std::shared_ptr<Operation>> subexpressions_;

@@ -32,6 +32,16 @@ namespace stoke {
       return number_;
     }
 
+    bool equals(const Operation& other) const {
+      const Symbol* symbol = dynamic_cast<const Symbol*>(&other);
+      if (!symbol) { return false; }
+
+      if (empty and symbol->isEmpty()) { return true; }
+      if (empty or symbol->isEmpty() or number_ != symbol->getNumber()) { return false; }
+
+      return true;
+    }
+
   private:
     bool empty;
     size_t number_;

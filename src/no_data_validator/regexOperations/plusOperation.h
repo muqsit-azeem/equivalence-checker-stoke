@@ -79,6 +79,20 @@ namespace stoke {
         }
       }
     }
+
+    bool equals(const Operation& other) const {
+      if (!dynamic_cast<const PlusOperation*>(&other)) { return false; }
+
+      auto range = subexpressions_.size();
+      auto other_subexpressions = other.getSubexpressions();
+
+      if (range != other_subexpressions.size()) { return false; }
+
+      for (size_t i = 0; i < range; i++) {
+        if (!subexpressions_[i]->equals(*other_subexpressions[i])) { return false;}
+      }
+      return true;
+    }
   };
 }
 

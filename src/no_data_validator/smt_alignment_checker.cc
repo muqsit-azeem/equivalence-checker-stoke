@@ -21,6 +21,7 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   FlatMemory rewrite_memory(separate_stack);
   rewrite_sym_state.memory = &rewrite_memory;
 
+  std::cout << " PROCESSING REGEXES "<< std::endl;
   SymbolicInstructionProcessor::process_regex(&target_sym_state, p, target, false, false);
   SymbolicInstructionProcessor::process_regex(&rewrite_sym_state,q, rewrite, false, false);
 
@@ -36,5 +37,6 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   bool result = solver_->is_sat(bool_vector); //failing
   //bool result = false;
 
+  std::cout << "RESULT: " << result << std::endl;
   return result;
 }

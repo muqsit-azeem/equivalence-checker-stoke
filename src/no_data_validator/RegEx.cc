@@ -34,9 +34,12 @@ void RegEx::dfs(size_t curr, std::set<size_t>& visited, bool find_succ)
   }
 }
 
+// function find a path and make map containing all transitions between 2 states
 bool RegEx::getPath(size_t start, size_t end, std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>>& result,
 std::set<size_t>& nodes_between, std::map<size_t, std::set<size_t>>& succs_map, std::map<size_t, std::set<size_t>>& preds_map) {
+  cout << endl;
   cout << "Start " << start << " End " << end << endl;
+
   std::set<size_t> succ;
   dfs(start, succ, true);
 
@@ -51,6 +54,12 @@ std::set<size_t>& nodes_between, std::map<size_t, std::set<size_t>>& succs_map, 
 
   if (nodes_between.empty()) {    //path from start to end doesn't exist
     return false;
+  }
+
+  std::cout << "nodes: " << nodes_between.size() << std::endl;
+  for (auto nodes : nodes_between)
+  {
+    std::cout << nodes << " " << std::endl;
   }
 
   for (size_t node : nodes_between) {
@@ -77,6 +86,13 @@ std::set<size_t>& nodes_between, std::map<size_t, std::set<size_t>>& succs_map, 
     }
   }
 
+  if (start == end) {
+    auto self_pair = std::tuple<size_t,size_t>(start,end);
+    if (result.find(self_pair) == result.end()) {
+      result.insert(std::make_pair(self_pair,std::make_shared<Symbol>()));
+    }
+  }
+
   return !result.empty();     // if start == end intersection won't be empty but the map is going to be if there is no (start, start) edge
 }
 
@@ -96,10 +112,13 @@ void RegEx::joinEdges(size_t pred, size_t succ, size_t node, std::map<std::tuple
     subexpressions.push_back(regex_map[pred_to_node]);
   }
   if (contains_loop) {
-    std::vector<std::shared_ptr<Operation>> star_vector;
-    star_vector.push_back(regex_map[std::make_tuple(node, node)]);
-    std::shared_ptr<StarOperation> star = std::make_shared<StarOperation>(star_vector);
-    subexpressions.push_back(star);
+    auto existing_operation = regex_map[std::make_tuple(node, node)];
+    if (!existing_operation->isEmpty()) {
+      std::vector<std::shared_ptr<Operation>> star_vector;
+      star_vector.push_back(existing_operation);
+      std::shared_ptr<StarOperation> star = std::make_shared<StarOperation>(star_vector);
+      subexpressions.push_back(star);
+    }
   }
   if (!succ_empty) {
     subexpressions.push_back(regex_map[node_to_succ]);
@@ -176,10 +195,13 @@ void RegEx::joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::
     subexpressions.push_back(regex_map[pred_to_node]);
   }
   if (contains_loop) {
-    std::vector<std::shared_ptr<Operation>> star_vector;
-    star_vector.push_back(regex_map[std::make_tuple(node, node)]);
-    std::shared_ptr<StarOperation> star = std::make_shared<StarOperation>(star_vector);
-    subexpressions.push_back(star);
+    auto existing_operation = regex_map[std::make_tuple(node, node)];
+    if (!existing_operation->isEmpty()) {
+      std::vector<std::shared_ptr<Operation>> star_vector;
+      star_vector.push_back(existing_operation);
+      std::shared_ptr<StarOperation> star = std::make_shared<StarOperation>(star_vector);
+      subexpressions.push_back(star);
+    }
   }
   if (!succ_empty) {
     subexpressions.push_back(regex_map[node_to_succ]);
@@ -324,6 +346,7 @@ bool RegEx::getRegex(size_t start, size_t end, std::shared_ptr<Operation>& regex
   std::map<size_t, std::set<size_t>> preds;
 
   if (!getPath(start, end, regex_on_edges, nodes_between, succs, preds)) {  // if rex is empty set
+    std::cout << "ERROR" << std::endl;
     return false;
   }
 
