@@ -23,6 +23,9 @@ namespace stoke {
       symbol_ = '+';
     }
 
+    PlusOperation(std::shared_ptr<Operation> subexpression)
+  : PlusOperation(std::vector<std::shared_ptr<Operation>>{subexpression}) {};
+
     // prev_subexpresion + subexpresion
     void add_subexpression(std::shared_ptr<Operation> subexpression) {
       if (subexpression->isEmpty()) {return;}
@@ -33,7 +36,7 @@ namespace stoke {
       subexpressions_.push_back(subexpression);
     }
 
-    // doesnt work for input of PlusOperation
+    // prev_subex_1.subexpression + prev_subex_2.subexpression, doesn't work for input of PlusOperation
     //TODO: refine to work for all cases
     void add_to_every_subexpression(std::shared_ptr<Operation> subexpression) {
       if (subexpression->isEmpty() || std::dynamic_pointer_cast<PlusOperation>(subexpression)) {return;}

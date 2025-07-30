@@ -20,6 +20,9 @@ public:
     symbol_ = '.';
   }
 
+  ConcatenationOperation(std::shared_ptr<Operation> subexpression)
+  : ConcatenationOperation(std::vector<std::shared_ptr<Operation>>{subexpression}) {};
+
   // prev_subexpresion . subexpresion
   void add_subexpression(std::shared_ptr<Operation> subexpression) {
     if (subexpression->isEmpty()) {return;}
@@ -28,10 +31,6 @@ public:
       return;
     }
     subexpressions_.push_back(subexpression);
-  }
-
-  std::vector<std::shared_ptr<Operation>> get_subexpressions() {
-    return subexpressions_;
   }
 
   bool equals(const Operation& other) const {

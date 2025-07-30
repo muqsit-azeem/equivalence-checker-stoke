@@ -9,6 +9,9 @@
 
 #include <unordered_set>
 
+#include "src/cfg/paths.h"
+#include "src/solver/smtsolver.h"
+
 namespace stoke {
 
 class RegEx {
@@ -17,25 +20,21 @@ public:
 
   RegEx(Cfg& cfg): cfg_(cfg) {}
 
-  bool isEmpty(size_t start, size_t end) {
-    return false;
-  }
+  //creates regex from start to end, if called on start and end before assigns pointer to already calculated regex.
+  bool getRegex(size_t start, size_t end, std::shared_ptr<Operation>& regex);
 
-  bool containsJustEmptyWord(size_t start, size_t end) {
-    return false;
-  }
-
-  bool getRegex(size_t start, size_t end, std::shared_ptr<Operation>& regex, bool split = false);
+  //creates CfgPath from regex
+  bool get_CfgPath(CfgPath& cfg_path, std::shared_ptr<Operation>& regex, SMTSolver& solver);
 
 private:
   Cfg& cfg_;
+  std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>> regex_in_cfg;
 
-  bool getPath(size_t start, size_t end, std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>>& result,
+  bool initializeRegEx(size_t start, size_t end, std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>>& result,
     std::set<size_t>& nodes_between, std::map<size_t, std::set<size_t>>& succs, std::map<size_t, std::set<size_t>>& preds);
   void dfs(size_t curr, std::set<size_t>& visited, bool find_succ);
   void sympifyRegex(size_t start, size_t end, std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>>& regex_map,
-    std::set<size_t>& nodes_between, std::map<size_t, std::set<size_t>>& succs, std::map<size_t, std::set<size_t>>& preds, bool split);
-  void joinEdges(size_t pred, size_t succ, size_t node, std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>>& regex_map, bool contains_loop);
+    std::set<size_t>& nodes_between, std::map<size_t, std::set<size_t>>& succs, std::map<size_t, std::set<size_t>>& preds);
   void joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>>& regex_map, bool contains_loop);
 };
 

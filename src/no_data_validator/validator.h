@@ -30,9 +30,10 @@ public:
 
     void printing_cfg();
     bool build_paa_for_alignment_predicate(std::shared_ptr<Invariant> inv, ProgramAlignmentAutomata& paa) override;
-    //bool smt_solution(std::shared_ptr<Operation> r_i, std::shared_ptr<Operation> r_j);
 
 private:
+  //void NoDataValidator::add_edge_to_paa(ProgramAlignmentAutomata::Edge& edge, ProgramAlignmentAutomata& paa);
+
   SmtAlignmentChecker* alignment_checker_;
   SMTSolver* solver_;
 };

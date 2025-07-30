@@ -4,6 +4,7 @@
 
 #include "src/no_data_validator/RegEx.h"
 
+#include "cvc4/util/bitvector.h"
 #include "src/no_data_validator/regexOperations/empty.h"
 #include "src/no_data_validator/regexOperations/concatenationOperation.h"
 #include "src/no_data_validator/regexOperations/starOperation.h"
@@ -12,7 +13,7 @@
 using namespace stoke;
 using namespace std;
 
-#define INPUT_STOP(X) { std::cout << "****************" << X << "****************" << std::endl; std::string input; std::cin >> input; }
+#define INPUT_STOP(X) { std::cout << "****************" << X << "****************" << std::endl;} // std::string input; std::cin >> input; }
 
 void RegEx::dfs(size_t curr, std::set<size_t>& visited, bool find_succ)
 {
@@ -21,12 +22,8 @@ void RegEx::dfs(size_t curr, std::set<size_t>& visited, bool find_succ)
   }
   visited.insert(curr);
 
-  auto begin_iterator = cfg_.succ_begin(curr);
-  auto end_iterator = cfg_.succ_end(curr);
-  if (!find_succ) {
-    begin_iterator = cfg_.pred_begin(curr);
-    end_iterator = cfg_.pred_end(curr);
-  }
+  auto begin_iterator = find_succ ? cfg_.succ_begin(curr) : cfg_.pred_begin(curr);
+  auto end_iterator = find_succ ? cfg_.succ_end(curr) : cfg_.pred_end(curr);
 
   while (begin_iterator != end_iterator) {
     dfs(*begin_iterator, visited, find_succ);
@@ -34,12 +31,9 @@ void RegEx::dfs(size_t curr, std::set<size_t>& visited, bool find_succ)
   }
 }
 
-// function find a path and make map containing all transitions between 2 states
-bool RegEx::getPath(size_t start, size_t end, std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>>& result,
-std::set<size_t>& nodes_between, std::map<size_t, std::set<size_t>>& succs_map, std::map<size_t, std::set<size_t>>& preds_map) {
-  cout << endl;
-  cout << "Start " << start << " End " << end << endl;
-
+bool RegEx::initializeRegEx(size_t start, size_t end, std::map<std::tuple<size_t,size_t>,
+    std::shared_ptr<Operation>>& result, std::set<size_t>& nodes_between, std::map<size_t, std::set<size_t>>& succs_map,
+    std::map<size_t, std::set<size_t>>& preds_map) {
   std::set<size_t> succ;
   dfs(start, succ, true);
 
@@ -59,18 +53,16 @@ std::set<size_t>& nodes_between, std::map<size_t, std::set<size_t>>& succs_map, 
   std::cout << "nodes: " << nodes_between.size() << std::endl;
   for (auto nodes : nodes_between)
   {
-    std::cout << nodes << " " << std::endl;
+    std::cout << nodes << " " ;
   }
+  std::cout << std::endl;
+
 
   for (size_t node : nodes_between) {
     auto succs = cfg_.succ_begin(node);
-    for (size_t _ = 0; _ < cfg_.succ_size(node); ++_) {
+    while (succs != cfg_.succ_end(node)) {
       if (nodes_between.find(*succs) != nodes_between.end()) {
-        if (node == cfg_.get_entry()) {
-          result.insert(std::make_pair(std::tuple<size_t,size_t>(node,*succs),std::make_shared<Symbol>()));
-        } else {
-          result.insert(std::make_pair(std::make_tuple(node, *succs), std::make_shared<Symbol>(node)));
-        }
+        result.insert(std::make_pair(std::make_tuple(node, *succs), std::make_shared<Symbol>(node)));
 
         if (succs_map.find(node) == succs_map.end()) {
           succs_map.insert(std::make_pair(node, std::set<size_t>()));
@@ -93,9 +85,9 @@ std::set<size_t>& nodes_between, std::map<size_t, std::set<size_t>>& succs_map, 
     }
   }
 
-  return !result.empty();     // if start == end intersection won't be empty but the map is going to be if there is no (start, start) edge
+  return !result.empty();
 }
-
+/*
 void RegEx::joinEdges(size_t pred, size_t succ, size_t node, std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>>& regex_map, bool contains_loop) {
 
   std::tuple<size_t,size_t> node_to_succ = std::make_tuple(node, succ);
@@ -177,10 +169,11 @@ void RegEx::joinEdges(size_t pred, size_t succ, size_t node, std::map<std::tuple
 
   regex_map.erase(node_to_succ);
 }
+*/
 
 // TODO: test
-void RegEx::joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>>& regex_map, bool contains_loop)
-{
+void RegEx::joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::tuple<size_t,size_t>,
+    std::shared_ptr<Operation>>& regex_map, bool contains_loop) {
   std::tuple<size_t,size_t> node_to_succ = std::make_tuple(node, succ);
   std::tuple<size_t,size_t> pred_to_node = std::make_tuple(pred, node);
   std::tuple<size_t,size_t> pred_to_succ = std::make_tuple(pred, succ);
@@ -197,9 +190,7 @@ void RegEx::joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::
   if (contains_loop) {
     auto existing_operation = regex_map[std::make_tuple(node, node)];
     if (!existing_operation->isEmpty()) {
-      std::vector<std::shared_ptr<Operation>> star_vector;
-      star_vector.push_back(existing_operation);
-      std::shared_ptr<StarOperation> star = std::make_shared<StarOperation>(star_vector);
+      std::shared_ptr<StarOperation> star = std::make_shared<StarOperation>(existing_operation);
       subexpressions.push_back(star);
     }
   }
@@ -228,11 +219,13 @@ void RegEx::joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::
               first_op->add_subexpression(last_subex);
               plus_vector.push_back(first_op);
             } else {
-              std::vector<std::shared_ptr<Operation>> new_vector;
-              if (!first_subex->isEmpty()) {new_vector.push_back(first_subex);}
-              std::shared_ptr<ConcatenationOperation> new_operation = std::make_shared<ConcatenationOperation>(new_vector);
-              new_operation->add_subexpression(last_subex);
-              plus_vector.push_back(new_operation);
+              if (first_subex->isEmpty()) {
+                plus_vector.push_back(last_subex);
+              } else {
+                std::shared_ptr<ConcatenationOperation> new_operation = std::make_shared<ConcatenationOperation>(first_subex);
+                new_operation->add_subexpression(last_subex);
+                plus_vector.push_back(new_operation);
+              }
             }
           }
         }
@@ -247,7 +240,11 @@ void RegEx::joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::
     } else {
       std::vector<std::shared_ptr<Operation>>  operation_vector;
 
-      operation_vector.push_back(subexpressions[0]);
+      if (auto first_op = std::dynamic_pointer_cast<ConcatenationOperation>(subexpressions[0])) {
+        operation_vector = first_op->getSubexpressions();
+      } else{
+        operation_vector.push_back(subexpressions[0]);
+      }
 
       if (subexpressions.size() == 3) { // subexpressions size is 3
         operation_vector.push_back(subexpressions[1]);
@@ -291,18 +288,14 @@ void RegEx::joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::
   regex_map.erase(node_to_succ);
 }
 
-
-/*
- * In regex_map should exist just one instance of edge at time
- */
-void RegEx::sympifyRegex(size_t start, size_t end, std::map<std::tuple<size_t,size_t>,std::shared_ptr<Operation>>& regex_map,
-std::set<size_t>& nodes_between, std::map<size_t, std::set<size_t>>& succs, std::map<size_t, std::set<size_t>>& preds,
-bool split) {
+void RegEx::sympifyRegex(size_t start, size_t end, std::map<std::tuple<size_t,size_t>,
+    std::shared_ptr<Operation>>& regex_map, std::set<size_t>& nodes_between, std::map<size_t,
+    std::set<size_t>>& succs, std::map<size_t, std::set<size_t>>& preds) {
   //INPUT_STOP("SIMPLIFY REGEX")
-  tuple<size_t,size_t> START = make_tuple(std::numeric_limits<size_t>::max(), start);
-  tuple<size_t,size_t> END = make_tuple(end, std::numeric_limits<size_t>::max());
-  regex_map.insert(std::make_pair(START, std::make_shared<Symbol>()));
-  regex_map.insert(std::make_pair(END, std::make_shared<Symbol>()));
+  tuple<size_t,size_t> start_state = make_tuple(std::numeric_limits<size_t>::max(), start);
+  tuple<size_t,size_t> end_state = make_tuple(end, std::numeric_limits<size_t>::max());
+  regex_map.insert(std::make_pair(start_state, std::make_shared<Symbol>()));
+  regex_map.insert(std::make_pair(end_state, std::make_shared<Symbol>()));
 
   if (preds.find(start) == preds.end()) { preds.insert(std::make_pair(start, std::set<size_t>()));}
   preds[start].insert(std::numeric_limits<size_t>::max());
@@ -310,47 +303,54 @@ bool split) {
   succs[end].insert(std::numeric_limits<size_t>::max());
 
   for (size_t node : nodes_between) {
-    bool contains_loop = (regex_map.find(std::make_tuple(node,node)) != regex_map.end());
+    bool contains_loop = regex_map.find(std::make_tuple(node,node)) != regex_map.end();
     for (size_t pred : preds[node]) {
       if (pred == node) {
         continue;
       }
+
       for (size_t succ : succs[node]) {
         if (succ == node) {
           continue;
         }
 
-        if (split) {
-          joinEdgesSplit(pred, succ, node, regex_map, contains_loop);
-        } else {
-          joinEdges(pred, succ, node, regex_map, contains_loop);
-        }
+        joinEdgesSplit(pred, succ, node, regex_map, contains_loop);
 
         preds[succ].erase(node);
         preds[succ].insert(pred);
         succs[pred].insert(succ);
       }
+
       succs[pred].erase(node);
       regex_map.erase(std::make_tuple(pred,node));
     }
-    if (contains_loop) {regex_map.erase(std::make_tuple(node,node));}
+
+    if (contains_loop) { regex_map.erase(std::make_tuple(node,node)); }
     succs.erase(node);
     preds.erase(node);
   }
 }
 
-bool RegEx::getRegex(size_t start, size_t end, std::shared_ptr<Operation>& regex, bool split) {
+bool RegEx::getRegex(size_t start, size_t end, std::shared_ptr<Operation>& regex) {
+  std::cout << "Finding regex from " << start << " to " << end << std::endl;
+
+  if (regex_in_cfg.find(std::make_tuple(start,end)) != regex_in_cfg.end()) {
+    regex = regex_in_cfg[std::make_tuple(start,end)];
+    std::cout << "REGEX existed: " << *regex << std::endl;
+    return true;
+  }
+
   std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>> regex_on_edges;
   std::set<size_t> nodes_between;
   std::map<size_t, std::set<size_t>> succs;
   std::map<size_t, std::set<size_t>> preds;
 
-  if (!getPath(start, end, regex_on_edges, nodes_between, succs, preds)) {  // if rex is empty set
-    std::cout << "ERROR" << std::endl;
+  if (!initializeRegEx(start, end, regex_on_edges, nodes_between, succs, preds)) {  // if rex is empty set
+    std::cout << "PATH NOT FOUND" << std::endl;
     return false;
   }
 
-  std::cout << "PRINTING THE MAP" << std::endl;
+  /*std::cout << "PRINTING THE MAP" << std::endl;
   for (const auto& pair : regex_on_edges) {
     size_t a, b;
     std::tie(a, b) = pair.first; // unpack the tuple
@@ -359,12 +359,58 @@ bool RegEx::getRegex(size_t start, size_t end, std::shared_ptr<Operation>& regex
     std::cout << "(" << a << ", " << b << ") => ";
     std::cout << *op << std::endl;
   }
+  */
 
-  sympifyRegex(start, end, regex_on_edges, nodes_between, succs, preds, split);
+  sympifyRegex(start, end, regex_on_edges, nodes_between, succs, preds);
 
   regex = regex_on_edges[make_tuple(std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::max())];
-  //regex = std::make_shared<Symbol>();
+
+  /*
+  if (!regex->isEmpty()) { // start != end
+    if (auto casted = dynamic_pointer_cast<Symbol>(regex)) {
+      auto concat = make_shared<ConcatenationOperation>(casted);
+      concat->add_subexpression(make_shared<Symbol>(end));
+      regex = concat;
+    } else if (auto casted = dynamic_pointer_cast<PlusOperation>(regex)) {
+      casted->add_to_every_subexpression(make_shared<Symbol>(end));
+      regex = casted;
+    } else if (auto casted = dynamic_pointer_cast<ConcatenationOperation>(regex)) {
+      casted->add_subexpression(make_shared<Symbol>(end));
+      regex = casted;
+    }
+  }
+  */
+
+  regex_in_cfg[make_tuple(start, end)] = regex;
 
   std::cout << "REGEX: " << *regex << std::endl;
   return true;
+}
+
+bool RegEx::get_CfgPath(CfgPath& cfg_path, std::shared_ptr<Operation>& regex, SMTSolver& solver)
+{
+  if (regex->isEmpty()) { return true; }
+  if (auto symbol = dynamic_pointer_cast<Symbol>(regex)) {
+    cfg_path.push_back(symbol->getNumber());
+    return true;
+  }
+  if (auto concat = dynamic_pointer_cast<ConcatenationOperation>(regex)) {
+    for (auto operation : concat->getSubexpressions()) {
+      if (!get_CfgPath(cfg_path, operation, solver)) { return false; }
+    }
+    return true;
+  }
+  if (auto star = dynamic_pointer_cast<StarOperation>(regex)) {
+    CfgPath temp;
+    for (auto operation : star->getSubexpressions()) {
+      if (!get_CfgPath(temp, operation, solver)) { return false; }
+    }
+
+    cpputil::BitVector num = solver.get_model_bv(star->get_loop_var(), 1);
+    for (uint64_t i = 0; i < num.get_fixed_quad(0); i++) {
+      cfg_path.insert(cfg_path.end(), temp.begin(), temp.end());
+    }
+    return true;
+  }
+  return false;
 }

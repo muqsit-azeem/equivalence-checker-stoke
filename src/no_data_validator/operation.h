@@ -29,6 +29,7 @@ namespace stoke {
     virtual bool equals(const Operation& other) const = 0;
 
   protected:
+    static size_t static_star_count;
     char symbol_;
     std::vector<std::shared_ptr<Operation>> subexpressions_;
   };

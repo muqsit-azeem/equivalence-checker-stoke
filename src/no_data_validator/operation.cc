@@ -10,6 +10,9 @@
 
 using namespace std;
 
+namespace stoke {
+  size_t Operation::static_star_count = 0;
+}
 
 namespace std {
   std::ostream& operator<<(std::ostream& os, const stoke::Operation& op) {

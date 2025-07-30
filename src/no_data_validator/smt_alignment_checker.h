@@ -35,7 +35,9 @@ public:
   bool check( std::shared_ptr<Invariant> inv,
               const Cfg* target, const Cfg* rewrite,
               std::shared_ptr<Operation> p, std::shared_ptr<Operation> q,
-              bool override_separate_stack
+              bool override_separate_stack,
+              size_t start_1, size_t end_1,
+              size_t start_2, size_t end_2
               );
 
   /** Set whether we are going to use separate stack. */

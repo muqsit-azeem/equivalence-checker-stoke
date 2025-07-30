@@ -24,14 +24,15 @@ using namespace std::chrono;
 using namespace stoke;
 using namespace x64asm;
 using State = stoke::ProgramAlignmentAutomata::State;
+using Edge = stoke::ProgramAlignmentAutomata::Edge;
 
-#define INPUT_STOP(X) { std::cout << "****************" << X << "****************" << std::endl; std::string input; std::cin >> input; }
+#define INPUT_STOP(X) { std::cout << "****************" << X << "****************" << std::endl; } // std::string input; std::cin >> input; }
 #define SPACE() { std::cout << " " << std::endl;}
 
 bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invariant> inv, ProgramAlignmentAutomata& paa) {
   //printing_cfg();
 
-  std::map<std::tuple<State,State>, std::tuple<std::shared_ptr<Operation>, std::shared_ptr<Operation>>> T; // no support for multiple paths from one state to other
+  //std::map<std::tuple<State,State>, std::tuple<std::shared_ptr<Operation>, std::shared_ptr<Operation>>> T; // no support for multiple paths from one state to other
 
   auto S_1 = target_.reachable_begin();
   size_t num_s_1 = target_.num_reachable();
@@ -85,10 +86,14 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
       std::shared_ptr<Operation> target_regex;
       std::shared_ptr<Operation> rewrite_regex;
 
-      if (!target_Regex.getRegex(qi_1, qi_2, target_regex, true) || !rewrite_Regex.getRegex(qj_1, qj_2, rewrite_regex, true)) {
+      if (!target_Regex.getRegex(qi_1, qi_2, target_regex) ||
+          !rewrite_Regex.getRegex(qj_1, qj_2, rewrite_regex)) {
         std::cout << "FALSE 01" << std::endl;
         continue;
       }
+
+
+      //continue; //DEBUG
 
       if (qi_1 == qi_2 && qj_1 == qj_2 && (target_regex->isEmpty() || rewrite_regex->isEmpty())) {
         std::cout << "FALSE 02" << std::endl;
@@ -117,36 +122,52 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
       for (auto r_i : R_i) {
         for (auto r_j : R_j) {
           std::cout << "r_i: " << *r_i << "   r_j: " << *r_j << std::endl;
-          std::shared_ptr<Operation> rc_i, rc_j; // may not be needed, if SAT initialized in check
-          if (alignment_checker_->check(inv, &target_, &rewrite_, r_i, r_j, false)) {
-            State from_state(qi_1, qj_1);
+
+          //std::shared_ptr<Operation> rc_i, rc_j; // may not be needed, if SAT initialized in check
+          if (alignment_checker_->check(inv, &target_, &rewrite_, r_i, r_j, false, qi_1, qi_2, qj_1, qj_2)) {
+            //State from_state(qi_1, qj_1);
             State to_state(qi_2, qj_2);
-            T[std::make_pair(from_state, to_state)] = std::make_pair(r_i, r_j);
+
+            CfgPath target_path;
+            CfgPath rewrite_path;
+            std::cout << "BEFORE" << std::endl;
+            target_Regex.get_CfgPath(target_path, r_i, *solver_);
+            rewrite_Regex.get_CfgPath(rewrite_path, r_j, *solver_);
+            /*
+            if (!target_path.empty()) { target_path.pop_back();}
+            if (!rewrite_path.empty()) { rewrite_path.pop_back(); } // CfgPath doesn't contain to State but regex does
+            */
+            Edge edge(to_state, target_path, rewrite_path);
+            //edge.from = from_state;
+            //add_edge_to_paa(edge, paa);
+            paa.add_edge(edge); // should substitute T
+
+            //std::cout << "start" << from_state << std::endl;
+            //std::cout << "end" << to_state << std::endl;
+            //std::cout << edge << std::endl;
+            //std::cout << "********************************" << std::endl; std::string input; std::cin >> input;
+
+            //T[std::make_pair(from_state, to_state)] = std::make_pair(r_i, r_j);
             reach.push(std::make_pair((size_t) qi_2, qj_2));
 
           }
         }
       }
 
+      //if (qi_1 == 3 && qj_1 == 0) { std::string input; std::cin >> input; }
+
     }
   }
-  return false;
-}
-/*
-bool NoDataValidator::smt_solution(shared_ptr<Operation> r_i, shared_ptr<Operation> r_j) {
-  // memory set up
-  SymState target_sym_state;
-  FlatMemory target_memory(false);
-  target_sym_state.memory = &target_memory;
 
-  SymState rewrite_sym_state;
-  FlatMemory rewrite_memory(false);
-  rewrite_sym_state.memory = &rewrite_memory;
-
-  auto bool_vector = target_sym_state.equality_constraints(rewrite_sym_state);
-  return solver_->is_sat(bool_vector);
+  std::cout << "************PAA*********"<< std::endl;
+  paa.print_all();
+  std::string input; std::cin >> input;
+  //paa.remove_prefixes();
+  //
+  return true;
 }
-*/
+
+//void NoDataValidator::add_edge_to_paa(Edge& edge, ProgramAlignmentAutomata& paa) {}
 
 //debuging function
 void NoDataValidator::printing_cfg() {
@@ -161,7 +182,7 @@ void NoDataValidator::printing_cfg() {
   sym_state.memory = &sym_memory;
 
   auto count = target.num_reachable();
-  for (size_t _ = 0; _ < count; ++_)
+  while (states != target.reachable_end())
   {
     cout << "For block: " << *states << endl;
     auto instruction = target.instr_begin(*states);
@@ -185,7 +206,7 @@ void NoDataValidator::printing_cfg() {
       std::cout << "  Maybe Read:   " << target.maybe_read_set(*instruction) << std::endl;
       std::cout << "  Maybe Write:  " << target.maybe_write_set(*instruction) << std::endl;
       std::cout << "  Maybe Undef:  " << target.maybe_undef_set(*instruction) << std::endl;*/
-      SymbolicInstructionProcessor::process_instruction(&sym_state, &inst, false, false);
+      //SymbolicInstructionProcessor::process_instruction(&sym_state, &inst, false, false);
       std::cout << endl;
       std::cout << sym_state << endl;
       std::cout << std::endl;
@@ -199,6 +220,7 @@ void NoDataValidator::printing_cfg() {
     }
     ++states;
   }
+  std::string input; std::cin >> input;
 
   cout << "Target: " << endl;
   cout << target.get_code() << endl;
