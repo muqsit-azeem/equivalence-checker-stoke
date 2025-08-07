@@ -36,6 +36,7 @@ private:
   void sympifyRegex(size_t start, size_t end, std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>>& regex_map,
     std::set<size_t>& nodes_between, std::map<size_t, std::set<size_t>>& succs, std::map<size_t, std::set<size_t>>& preds);
   void joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>>& regex_map, bool contains_loop);
+  bool get_CfgPath_base(CfgPath& cfg_path, std::shared_ptr<Operation>& regex, SMTSolver& solver);
 };
 
 } // namespace stoke

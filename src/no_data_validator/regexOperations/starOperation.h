@@ -18,6 +18,7 @@ public:
   StarOperation(std::vector<std::shared_ptr<Operation>> subexpressions){
     static_star_count += 1;
     loop_variable_name = "star_vector_num_" + std::to_string(static_star_count);
+    plus_one_ = false;
     subexpressions_ = subexpressions;
     symbol_ = '*';
   }
@@ -43,10 +44,18 @@ public:
     return loop_variable_name;
   }
 
+  void set_plus_one(bool plus_one) {
+    plus_one_ = plus_one;
+  }
+
+  bool is_plus_one() {
+    return plus_one_;
+  }
+
 private:
 
   std::string loop_variable_name;
-  SymBitVector loop_count;
+  bool plus_one_;
 
 };
 }

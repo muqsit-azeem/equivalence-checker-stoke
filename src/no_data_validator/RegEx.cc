@@ -365,8 +365,9 @@ bool RegEx::getRegex(size_t start, size_t end, std::shared_ptr<Operation>& regex
 
   regex = regex_on_edges[make_tuple(std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::max())];
 
-  /*
-  if (!regex->isEmpty()) { // start != end
+
+
+  if (!regex->isEmpty()) {
     if (auto casted = dynamic_pointer_cast<Symbol>(regex)) {
       auto concat = make_shared<ConcatenationOperation>(casted);
       concat->add_subexpression(make_shared<Symbol>(end));
@@ -377,9 +378,14 @@ bool RegEx::getRegex(size_t start, size_t end, std::shared_ptr<Operation>& regex
     } else if (auto casted = dynamic_pointer_cast<ConcatenationOperation>(regex)) {
       casted->add_subexpression(make_shared<Symbol>(end));
       regex = casted;
+    } else if (auto casted = dynamic_pointer_cast<StarOperation>(regex)) {
+      if (start == end) { casted->set_plus_one(true);}
+      auto concat = make_shared<ConcatenationOperation>(casted);
+      concat->add_subexpression(make_shared<Symbol>(end));
+      regex = concat;
     }
   }
-  */
+
 
   regex_in_cfg[make_tuple(start, end)] = regex;
 
@@ -387,30 +393,81 @@ bool RegEx::getRegex(size_t start, size_t end, std::shared_ptr<Operation>& regex
   return true;
 }
 
-bool RegEx::get_CfgPath(CfgPath& cfg_path, std::shared_ptr<Operation>& regex, SMTSolver& solver)
+bool RegEx::get_CfgPath_base(CfgPath& cfg_path, std::shared_ptr<Operation>& regex, SMTSolver& solver)
 {
-  if (regex->isEmpty()) { return true; }
+  std::cout << "Finding regex from " << *regex << std::endl;
+  if (regex->isEmpty()) { return false; }
   if (auto symbol = dynamic_pointer_cast<Symbol>(regex)) {
     cfg_path.push_back(symbol->getNumber());
     return true;
   }
   if (auto concat = dynamic_pointer_cast<ConcatenationOperation>(regex)) {
+    bool result = true;
     for (auto operation : concat->getSubexpressions()) {
-      if (!get_CfgPath(cfg_path, operation, solver)) { return false; }
+      std::cout << "REGEX in concat: " << *operation << std::endl;
+      bool bool_from_operation = get_CfgPath_base(cfg_path, operation, solver);
+      result = result and bool_from_operation;
     }
-    return true;
+    return result;
   }
   if (auto star = dynamic_pointer_cast<StarOperation>(regex)) {
     CfgPath temp;
     for (auto operation : star->getSubexpressions()) {
-      if (!get_CfgPath(temp, operation, solver)) { return false; }
+      if (!get_CfgPath_base(temp, operation, solver)) { return false; }
     }
 
-    cpputil::BitVector num = solver.get_model_bv(star->get_loop_var(), 1);
+
+    cpputil::BitVector num = solver.get_model_bv(star->get_loop_var(), 64);
+    cpputil::BitVector rdi_r = solver.get_model_bv("%rdi_rewrite", 64);
+    cpputil::BitVector rdi_t = solver.get_model_bv("%rdi_target", 64);
+    cpputil::BitVector rax_r = solver.get_model_bv("%rax_rewrite", 64);
+    cpputil::BitVector rax_t = solver.get_model_bv("%rax_target", 64);
+    //uint64_t val = num.contents_[0];
+    //std::cout << val << std::endl;
+
+
+    //auto loop_count = star->is_plus_one() ? num.get_fixed_quad(0) + 1 : num.get_fixed_quad(0);
+    //std::cout << star->is_plus_one() << std::endl;
+    //std::cout << num.get_fixed_quad(0) << std::endl;
+
+    /*
+    for (int i = 1; i < 5000; i = i*2) {
+      cpputil::BitVector tr = solver.get_model_bv(star->get_loop_var(), i);
+      tr.resize_for_bits(64);
+      for (int j = i; j > 0; j -= 64) {
+        std::cout << "i: " << i << " value: " << tr.get_fixed_quad(j) << std::endl;
+      }
+    }
+    */
+
+
+    std::cout << "has model: " << solver.has_model() << std::endl;
+    std::cout << "star variable name: " << star->get_loop_var() << std::endl;
+    std::cout << "LOOP COUNT " << hex << num.get_fixed_quad(0) << std::endl; //TODO: fix
+    std::cout << "RDI R " << hex << rdi_r.get_fixed_quad(0) << std::endl;
+    std::cout << "RDI T " << hex  << rdi_t.get_fixed_quad(0) << std::endl;
+    std::cout << "RAX R " << hex << rax_r.get_fixed_quad(0) << std::endl;
+    std::cout << "RAX T " << hex << rax_t.get_fixed_quad(0) << std::endl;
+    //std::string input; std::cin >> input;
     for (uint64_t i = 0; i < num.get_fixed_quad(0); i++) {
       cfg_path.insert(cfg_path.end(), temp.begin(), temp.end());
     }
-    return true;
+    return !star->is_plus_one();
   }
   return false;
+}
+
+bool RegEx::get_CfgPath(CfgPath& cfg_path, std::shared_ptr<Operation>& regex, SMTSolver& solver) {
+  std::cout << "REGEX in get_CfgPath: " << *regex << std::endl;
+
+  //get_CfgPath(cfg_path, regex, solver);
+
+  if (get_CfgPath_base(cfg_path, regex, solver)) {
+
+    cfg_path.pop_back();
+  }
+
+  std::cout << "CFG PATH" << cfg_path << std::endl;
+
+  return true;
 }

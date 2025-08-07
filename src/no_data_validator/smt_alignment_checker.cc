@@ -7,6 +7,8 @@
 #include <tr1/memory>
 
 #include "../symstate/bitvector.h"
+#include "../symstate/bool.h"
+#include "../symstate/regs.h"
 #include "../symstate//memory/flat.h"
 
 using namespace stoke;
@@ -25,16 +27,44 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
 
   SymState target_sym_state("target");
   FlatMemory target_memory(separate_stack);
+  target_memory.set_parent(&target_sym_state);
   target_sym_state.memory = &target_memory;
+
 
   SymState rewrite_sym_state("rewrite");
   FlatMemory rewrite_memory(separate_stack);
+  rewrite_memory.set_parent(&rewrite_sym_state);
   rewrite_sym_state.memory = &rewrite_memory;
 
   std::cout << " PROCESSING REGEXES "<< std::endl;
-  SymBitVector one = SymBitVector::constant(1, 1); //neutral value
-  SymbolicInstructionProcessor::process_regex(&target_sym_state, p, target, true, false, one);
-  SymbolicInstructionProcessor::process_regex(&rewrite_sym_state,q, rewrite, true, false, one);
+  SymBitVector one = SymBitVector::constant(64, 1); //neutral value
+
+  ProcessingInfo target_processing_info, rewrite_processing_info;
+  SymbolicInstructionProcessor::process_regex(&target_sym_state, p, target, target_processing_info, false,
+                                          one,  SymRegs(16, 64));
+  SymbolicInstructionProcessor::process_regex(&rewrite_sym_state,q, rewrite, rewrite_processing_info, false,
+                                          one,  SymRegs(16, 64));
+  if (start_1 == end_1) {
+    if (target_sym_state.constraints.size() != 0)
+    {
+      SymBool last = target_sym_state.constraints.back();
+      target_sym_state.constraints.pop_back();
+      target_sym_state.add_constraint(!last);
+    }
+  } else if (target_processing_info.prev_state_ends_with_jump) {
+    target_sym_state.constraints.pop_back();
+  }
+
+  if (start_2 == end_2) {
+    if (rewrite_sym_state.constraints.size() != 0)
+    {
+      SymBool last = rewrite_sym_state.constraints.back();
+      rewrite_sym_state.constraints.pop_back();
+      rewrite_sym_state.add_constraint(!last);
+    }
+  } else if (rewrite_processing_info.prev_state_ends_with_jump) {rewrite_sym_state.constraints.pop_back();}
+
+
   /*std::cout << target_sym_state << std::endl;
   for (auto i : target_memory.get_constraints())
   {
@@ -49,17 +79,86 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
 
   size_t number = 0;
   std::vector<SymBool> bool_vector;
+  //auto sym_bool = SymBool::_true();
   auto sym_bool = (*inv)(target_sym_state, rewrite_sym_state, number);
-  bool_vector.push_back(sym_bool);
 
-  //std::cout << "SYM Bool: " << std::endl;
-  //std::cout << sym_bool << std::endl;
-  //auto bool_vector = target_sym_state.equality_constraints(rewrite_sym_state);
+  for (auto cons : target_sym_state.constraints)
+  {
+    //std::cout << " CONSTRAINT "<< cons <<std::endl;
+    //sym_bool = sym_bool & cons;
+    bool_vector.push_back(cons);
+  }
+  for (auto cons : rewrite_sym_state.constraints)
+  {
+    //std::cout << " CONSTRAINT "<< cons <<std::endl;
+    //sym_bool = sym_bool & cons;
+    bool_vector.push_back(cons);
+  }
+
+  for (auto cons : target_processing_info.star_constraints)
+  {
+    //sym_bool = sym_bool & cons;
+    bool_vector.push_back(cons);
+  }
+  for (auto cons : rewrite_processing_info.star_constraints)
+  {
+    //sym_bool = sym_bool & cons;
+    bool_vector.push_back(cons);
+  }
+
+
+
+
+  /*vector<SymBool> memory_bool;
+  auto mem_bool = SymBool::_true();
+  std::cout << " Memory Constraints "<< std::endl;
+  vector<SymBool> memory_constrains = target_memory.get_constraints();
+  for (auto mem_constr : memory_constrains)
+  {
+    std::cout << mem_constr << std::endl << std::endl;
+    mem_bool = mem_bool & mem_constr;
+  }*/
+
+  /*for (auto mem_constr : rewrite_memory.get_constraints())
+  {
+    //std::cout << mem_constr << std::endl;
+    mem_bool = mem_bool & mem_constr;
+  }*/
+
+  //memory_bool.push_back(mem_bool);
+
+  //sym_bool = sym_bool & mem_bool;
+
+  sym_bool = sym_bool & (target_processing_info.number_of_bits_changed == rewrite_processing_info.number_of_bits_changed);
+  bool_vector.push_back(sym_bool);
+  //bool_vector.insert(bool_vector.end(), target_processing_info.memory_axioms.begin(), target_processing_info.memory_axioms.end());
+  //bool_vector.insert(bool_vector.end(), rewrite_processing_info.memory_axioms.begin(), rewrite_processing_info.memory_axioms.end());
 
   //for (auto i: bool_vector) {std::cout << i << std::endl;}
+  /*if (start_1 == 3 && end_1 == 3 && start_2 == 4 && end_2 == 4)
+  {
+    std::vector<SymBool> bool_vec;
+    SymBool bool_bool = target_processing_info.memory_axioms[0];//SymBool::_true() & target_sym_state.constraints[1];
+    bool_vec.push_back(bool_bool);
+    std::cout << "bool_bool: " << bool_bool << std::endl;
+    bool_bool = rewrite_processing_info.memory_axioms[0];//SymBool::_true() & target_sym_state.constraints[1];
+    bool_vec.push_back(bool_bool);
+    std::cout << "bool_bool: " << bool_bool << std::endl;
+    bool_vec.push_back(sym_bool);
 
-  bool result = solver_->is_sat(bool_vector); //failing
-  //bool result = false;
+    bool result = solver_->is_sat(bool_vec);
+
+    std::cout << "RESULT: " << result << std::endl;
+    return result;
+  }*/
+
+  std::cout << "SYM Bool: " << std::endl;
+  std::cout << sym_bool << std::endl;
+
+  //\std::cout << "MEM Bool: " << std::endl;
+  //std::cout << mem_bool << std::endl;
+
+  bool result = solver_->is_sat(bool_vector);
 
   std::cout << "RESULT: " << result << std::endl;
   return result;

@@ -22,7 +22,7 @@ public:
 
     NoDataValidator(ObligationChecker& checker, Sandbox& sandbox, InvariantLearner& inv)
       : DdecValidator(checker, sandbox, inv) {
-      solver_ = new Cvc4Solver();
+      solver_ = new Z3Solver();
       alignment_checker_ = new SmtAlignmentChecker(solver_);
     }
 
