@@ -192,7 +192,7 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
         }
       }
 
-      if (qi_1 == 3 && qj_1 == 4 && qi_2 == 3 && qj_2 == 4) { std::string input; std::cin >> input; }
+      if (qi_1 == 3 && qj_1 == 3 && qi_2 == 3 && qj_2 == 5) { std::string input; std::cin >> input; }
 
     }
   }

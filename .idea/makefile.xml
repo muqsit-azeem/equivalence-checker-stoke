@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="MakefileBuildTargetsManager">
+    <user-build-targets>
+      <build-target name="docker exec sync_eq make release">
+        <build-configurations>
+          <build-configuration>
+            <make-targets>
+              <make-target>docker</make-target>
+              <make-target>exec</make-target>
+              <make-target>sync_eq</make-target>
+              <make-target>make</make-target>
+              <make-target>release</make-target>
+            </make-targets>
+          </build-configuration>
+        </build-configurations>
+      </build-target>
+      <build-target name="docker exec sync_eq make clean">
+        <build-configurations>
+          <build-configuration>
+            <make-targets>
+              <make-target>docker</make-target>
+              <make-target>exec</make-target>
+              <make-target>sync_eq</make-target>
+              <make-target>make</make-target>
+              <make-target>clean</make-target>
+            </make-targets>
+          </build-configuration>
+        </build-configurations>
+      </build-target>
+    </user-build-targets>
+  </component>
+</project>

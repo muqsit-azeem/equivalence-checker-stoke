@@ -10,6 +10,8 @@
 #include "../symstate/bool.h"
 #include "../symstate/regs.h"
 #include "../symstate//memory/flat.h"
+#include "regexOperations/concatenationOperation.h"
+#include "src/validator/invariants/conjunction.h"
 
 using namespace stoke;
 using namespace x64asm;
@@ -23,6 +25,20 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
               ) {
   std::cout << "start_1: " << start_1 << " end_1 " << end_1 << std::endl;
   std::cout << "start_2: " << start_2 << " end_2 " << end_2 << std::endl;
+
+  if (start_1 == end_1 && !p->isEmpty() && start_2 != end_2) {
+    auto vector = p->getSubexpressions();
+    vector.pop_back();
+    p = make_shared<ConcatenationOperation>(vector);
+  }
+  if (start_1 != end_1 && !q->isEmpty() && start_2 == end_2) {
+    auto vector = q->getSubexpressions();
+    vector.pop_back();
+    q = make_shared<ConcatenationOperation>(vector);
+  }
+
+  std::cout << "p = " << *p << " q: " << *q << std::endl;
+
   bool separate_stack = separate_stack_ || override_separate_stack;
 
   SymState target_sym_state("target");
@@ -82,30 +98,31 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   //auto sym_bool = SymBool::_true();
   auto sym_bool = (*inv)(target_sym_state, rewrite_sym_state, number);
 
-  for (auto cons : target_sym_state.constraints)
-  {
-    //std::cout << " CONSTRAINT "<< cons <<std::endl;
-    //sym_bool = sym_bool & cons;
-    bool_vector.push_back(cons);
-  }
-  for (auto cons : rewrite_sym_state.constraints)
-  {
-    //std::cout << " CONSTRAINT "<< cons <<std::endl;
-    //sym_bool = sym_bool & cons;
-    bool_vector.push_back(cons);
-  }
-
   for (auto cons : target_processing_info.star_constraints)
   {
+    std::cout << "Star CONSTRAINT "<< cons <<std::endl;
     //sym_bool = sym_bool & cons;
     bool_vector.push_back(cons);
   }
   for (auto cons : rewrite_processing_info.star_constraints)
   {
+    std::cout << "Star CONSTRAINT "<< cons <<std::endl;
     //sym_bool = sym_bool & cons;
     bool_vector.push_back(cons);
   }
 
+  for (auto cons : target_sym_state.constraints)
+  {
+    std::cout << " CONSTRAINT "<< cons <<std::endl;
+    //sym_bool = sym_bool & cons;
+    bool_vector.push_back(cons);
+  }
+  for (auto cons : rewrite_sym_state.constraints)
+  {
+    std::cout << " CONSTRAINT "<< cons <<std::endl;
+    //sym_bool = sym_bool & cons;
+    bool_vector.push_back(cons);
+  }
 
 
 
@@ -135,7 +152,7 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   //bool_vector.insert(bool_vector.end(), rewrite_processing_info.memory_axioms.begin(), rewrite_processing_info.memory_axioms.end());
 
   //for (auto i: bool_vector) {std::cout << i << std::endl;}
-  /*if (start_1 == 3 && end_1 == 3 && start_2 == 4 && end_2 == 4)
+  /*if (start_1 == 3 && end_1 == 3 && start_2 == 4 && end_2 == 5)
   {
     std::vector<SymBool> bool_vec;
     SymBool bool_bool = target_processing_info.memory_axioms[0];//SymBool::_true() & target_sym_state.constraints[1];

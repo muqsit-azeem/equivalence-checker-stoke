@@ -22,7 +22,7 @@
 #include "regexOperations/starOperation.h"
 
 using namespace std;
-using namespace cpputil;
+using namespace x64asm;
 
 namespace stoke {
 

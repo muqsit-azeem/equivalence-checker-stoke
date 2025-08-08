@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CLionExternalBuildManager">
+    <target id="a87a0073-35d1-47db-9e33-869fa61f72e9" name="release" defaultType="MAKE">
+      <configuration id="dfb947b2-6e1f-47c0-a114-ea24b64ae77d" name="release">
+        <build type="MAKE">
+          <make targetName="docker exec sync_eq make release" />
+        </build>
+        <clean type="MAKE">
+          <make targetName="docker exec sync_eq make clean" />
+        </clean>
+      </configuration>
+    </target>
+  </component>
+</project>
