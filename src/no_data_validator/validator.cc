@@ -120,13 +120,13 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
       }
 
 
-      //continue; //DEBUG
-
       if (qi_1 == qi_2 && qj_1 == qj_2 && (target_regex->isEmpty() || rewrite_regex->isEmpty())) {
         std::cout << "FALSE 02" << std::endl;
         //if (qi_1 == 0 && qj_1 == 5 && qi_2 == 0 && qj_2 == 5) { std::string input; std::cin >> input; }
         continue;
       }
+
+      //if (qi_1 == 3 && qj_1 == 4 && qi_2 == 3 && qj_2 == 4) { std::cout << target_Regex << rewrite_Regex << std::endl; std::string input; std::cin >> input; }
 
       //std::cout << std::endl;
       //continue;
@@ -150,9 +150,10 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
       for (auto r_i : R_i) {
         for (auto r_j : R_j) {
           std::cout << "r_i: " << *r_i << "   r_j: " << *r_j << std::endl;
+          std::map<string, uint64_t> star_map;
 
           //std::shared_ptr<Operation> rc_i, rc_j; // may not be needed, if SAT initialized in check
-          if (alignment_checker_->check(inv, &target_, &rewrite_, r_i, r_j, false, qi_1, qi_2, qj_1, qj_2)) {
+          if (alignment_checker_->check(inv, &target_, &rewrite_, r_i, r_j, false, qi_1, qi_2, qj_1, qj_2, star_map)) {
             State from_state(qi_1, qj_1);
             State to_state(qi_2, qj_2);
 
@@ -160,8 +161,8 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
             CfgPath rewrite_path;
             std::cout << "BEFORE" << std::endl;
 
-            target_Regex.get_CfgPath(target_path, r_i, *solver_);
-            rewrite_Regex.get_CfgPath(rewrite_path, r_j, *solver_);
+            target_Regex.get_CfgPath(target_path, r_i, star_map);
+            rewrite_Regex.get_CfgPath(rewrite_path, r_j, star_map);
 
             //if (!target_path.empty()) { target_path.pop_back();}
             //if (!rewrite_path.empty()) { rewrite_path.pop_back(); } // CfgPath doesn't contain to State but regex does TODO:fix
@@ -192,25 +193,23 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
         }
       }
 
-      if (qi_1 == 3 && qj_1 == 3 && qi_2 == 3 && qj_2 == 5) { std::string input; std::cin >> input; }
+      //if (qi_1 == 3 && qj_1 == 3 && qi_2 == 3 && qj_2 == 5)
+      //{
+      //std::string input; std::cin >> input;
+      //}
 
     }
   }
 
   std::cout << "************PAA*********"<< std::endl;
   //
-  //paa.simplify();
+  paa.simplify();
   //paa.remove_prefixes();
   paa.print_all();
   std::string input; std::cin >> input;
   //paa.remove_prefixes();
   //
   return true;
-}
-
-void simplify_paa(ProgramAlignmentAutomata& paa, std::set<std::pair<size_t, size_t>>& reach) {
-  std::set<std::pair<size_t, size_t>> temp;
-
 }
 
 //void NoDataValidator::add_edge_to_paa(Edge& edge, ProgramAlignmentAutomata& paa) {}

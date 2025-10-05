@@ -23,6 +23,7 @@ namespace stoke {
 
     bool prev_state_ends_with_jump;
     std::vector<SymBool> star_constraints;
+    std::vector<std::string> star_variable_names;
     std::vector<SymBool> memory_axioms;
 	SymBitVector number_of_bits_changed = SymBitVector::constant(64, 0);
 

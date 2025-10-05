@@ -37,7 +37,8 @@ public:
               std::shared_ptr<Operation> p, std::shared_ptr<Operation> q,
               bool override_separate_stack,
               size_t start_1, size_t end_1,
-              size_t start_2, size_t end_2
+              size_t start_2, size_t end_2,
+              std::map<string, uint64_t>& star_map
               );
 
   /** Set whether we are going to use separate stack. */
@@ -59,6 +60,8 @@ private:
   bool separate_stack_;
 
   SMTSolver* solver_;
+
+  bool smallestStar(std::vector<string> star_variables, std::map<string, uint64_t>& star_map, std::vector<SymBool>& bool_vector);
 
 };
 

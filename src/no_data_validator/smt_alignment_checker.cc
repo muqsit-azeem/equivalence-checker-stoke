@@ -10,6 +10,8 @@
 #include "../symstate/bool.h"
 #include "../symstate/regs.h"
 #include "../symstate//memory/flat.h"
+#include "cvc4/smt/smt_engine.h"
+#include "cvc4/util/bitvector.h"
 #include "regexOperations/concatenationOperation.h"
 #include "src/validator/invariants/conjunction.h"
 
@@ -21,12 +23,13 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
               std::shared_ptr<Operation> p, std::shared_ptr<Operation> q,
               bool override_separate_stack,
               size_t start_1, size_t end_1,
-              size_t start_2, size_t end_2
+              size_t start_2, size_t end_2,
+              std::map<string, uint64_t>& star_map
               ) {
   std::cout << "start_1: " << start_1 << " end_1 " << end_1 << std::endl;
   std::cout << "start_2: " << start_2 << " end_2 " << end_2 << std::endl;
 
-  if (start_1 == end_1 && !p->isEmpty() && start_2 != end_2) {
+  /*if (start_1 == end_1 && !p->isEmpty() && start_2 != end_2) {
     auto vector = p->getSubexpressions();
     vector.pop_back();
     p = make_shared<ConcatenationOperation>(vector);
@@ -36,6 +39,7 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
     vector.pop_back();
     q = make_shared<ConcatenationOperation>(vector);
   }
+  */
 
   std::cout << "p = " << *p << " q: " << *q << std::endl;
 
@@ -55,11 +59,22 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   std::cout << " PROCESSING REGEXES "<< std::endl;
   SymBitVector one = SymBitVector::constant(64, 1); //neutral value
 
+  bool target_star_zero = true, rewrite_star_zero = true;
+
+  if (start_1 == end_1 && start_2 == end_2) {
+    target_star_zero = false; rewrite_star_zero = false;
+  }
+  /*
+  if (start_1 != end_1 && dynamic_pointer_cast<StarOperation>(q) && start_2 == end_2) {
+    rewrite_star_zero = true;
+  }
+  */
+
   ProcessingInfo target_processing_info, rewrite_processing_info;
   SymbolicInstructionProcessor::process_regex(&target_sym_state, p, target, target_processing_info, false,
-                                          one,  SymRegs(16, 64));
+                                          one,  SymRegs(16, 64), target_star_zero);
   SymbolicInstructionProcessor::process_regex(&rewrite_sym_state,q, rewrite, rewrite_processing_info, false,
-                                          one,  SymRegs(16, 64));
+                                          one,  SymRegs(16, 64), rewrite_star_zero);
   if (start_1 == end_1) {
     if (target_sym_state.constraints.size() != 0)
     {
@@ -125,7 +140,6 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   }
 
 
-
   /*vector<SymBool> memory_bool;
   auto mem_bool = SymBool::_true();
   std::cout << " Memory Constraints "<< std::endl;
@@ -151,10 +165,15 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   //bool_vector.insert(bool_vector.end(), target_processing_info.memory_axioms.begin(), target_processing_info.memory_axioms.end());
   //bool_vector.insert(bool_vector.end(), rewrite_processing_info.memory_axioms.begin(), rewrite_processing_info.memory_axioms.end());
 
-  //for (auto i: bool_vector) {std::cout << i << std::endl;}
-  /*if (start_1 == 3 && end_1 == 3 && start_2 == 4 && end_2 == 5)
+  if (start_1 == 0 && end_1 == 3 && start_2 == 0 && end_2 == 4)
   {
-    std::vector<SymBool> bool_vec;
+    std::cout << " 33, 35  LOOP TRY"<< std::endl;
+    //std::string input; std::cin >> input;
+    //SymBitVector variable = SymBitVector::var(64, "star_vector_num_487");
+    //SymBool bool_bool = (variable == SymBitVector::constant(64, 0));
+    //bool_vector.push_back(bool_bool);
+
+    /*std::vector<SymBool> bool_vec;
     SymBool bool_bool = target_processing_info.memory_axioms[0];//SymBool::_true() & target_sym_state.constraints[1];
     bool_vec.push_back(bool_bool);
     std::cout << "bool_bool: " << bool_bool << std::endl;
@@ -166,8 +185,8 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
     bool result = solver_->is_sat(bool_vec);
 
     std::cout << "RESULT: " << result << std::endl;
-    return result;
-  }*/
+    return result;*/
+  }
 
   std::cout << "SYM Bool: " << std::endl;
   std::cout << sym_bool << std::endl;
@@ -175,8 +194,68 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   //\std::cout << "MEM Bool: " << std::endl;
   //std::cout << mem_bool << std::endl;
 
-  bool result = solver_->is_sat(bool_vector);
+  std::vector<string> star_variables = target_processing_info.star_variable_names;
+  star_variables.insert(star_variables.end(), rewrite_processing_info.star_variable_names.begin(), rewrite_processing_info.star_variable_names.end());
+  bool result = smallestStar(star_variables, star_map,bool_vector);
 
   std::cout << "RESULT: " << result << std::endl;
+  std::cout << "ERROR: " << solver_->has_error() << std::endl;
+  if (solver_->has_error()) {
+    std::cout << solver_->get_error()<< std::endl;
+  }
+
+
+  if (start_1 == 3 && end_1 == 3 && start_2 == 2 && end_2 == 4)
+  {
+    std::cout << " 03, 03  LOOP TRY"<< std::endl;
+    for (auto i : bool_vector)
+    {
+      std::cout << i << std::endl;
+    }
+    for (auto i : star_map)
+    {
+      std::cout << i.first << ": " << i.second << std::endl;
+    }
+    std::string input; std::cin >> input;
+  }
+
   return result;
+}
+
+
+bool SmtAlignmentChecker::smallestStar(std::vector<string> star_variables, std::map<string, uint64_t>& star_map, std::vector<SymBool>& bool_vector) {
+  if (solver_->is_sat(bool_vector)) {
+    for (auto star_ : star_variables) {
+      star_map[star_] = solver_->get_model_bv(star_, 64).get_fixed_quad(0);
+    }
+  } else {return false;}
+
+  // what if star is 0? maybe stop there
+  for (auto star : star_variables) {
+    std::cout << std::endl;
+    std::cout << "Current sym star: " << star_map[star] << std::endl;
+    bool min_found = false;
+    while (!min_found) {
+      uint64_t current_star = star_map[star];
+      SymBitVector current_sym_star = SymBitVector::constant(64, current_star);
+      SymBitVector symbolic_star = SymBitVector::var(64, star);
+      SymBool star_bound = symbolic_star.s_lt(current_sym_star);
+      //std::cout << "Current sym star: " << current_sym_star << std::endl;
+      bool_vector.push_back(star_bound);
+      if (auto resut = solver_->is_sat(bool_vector)) {
+        std::cout << "SMT result in smallest star: " << resut << std::endl;
+        star_map[star] = solver_->get_model_bv(star, 64).get_fixed_quad(0);
+      } else {
+        for (auto i : bool_vector)
+        {
+          std::cout << i << std::endl;
+        }
+        std::cout << "Got canceled" <<std::endl;
+        bool_vector.pop_back();
+        min_found = true;
+      }
+    }
+  }
+
+  return true;
 }

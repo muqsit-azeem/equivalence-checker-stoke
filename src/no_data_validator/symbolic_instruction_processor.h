@@ -41,7 +41,7 @@ public:
     // returns id of last cfg_state and bool if the
     static void process_regex(SymState* sym_state, std::shared_ptr<Operation> regex, const Cfg* cfg,
       //size_t previous_state,
-      ProcessingInfo& info, bool is_star, SymBitVector& loop_count, SymRegs beginning_state
+      ProcessingInfo& info, bool is_star, SymBitVector& loop_count, SymRegs beginning_state, bool star_zero
       ) {
       //std::cout << "process regex: " << *regex << "  is_star: " << info.is_star << std::endl;
 
@@ -81,8 +81,13 @@ public:
       if (auto star_operation = std::dynamic_pointer_cast<StarOperation>(regex)) {
         is_star = true;
         loop_count = SymBitVector::var(64, star_operation->get_loop_var()); //* loop_count;
-        info.star_constraints.push_back(loop_count.s_ge(SymBitVector::constant(64, 0)));
-        info.star_constraints.push_back(loop_count.s_lt(SymBitVector::constant(64, 100)));
+        info.star_variable_names.push_back(star_operation->get_loop_var());
+        if (star_zero) {
+          info.star_constraints.push_back(loop_count.s_ge(SymBitVector::constant(64, 0)));
+        } else {
+          info.star_constraints.push_back(loop_count.s_ge(SymBitVector::constant(64, 1)));
+        }
+        info.star_constraints.push_back(loop_count.s_lt(SymBitVector::constant(64, 1000000))); // needed because of overfloing
         beginning_state = copy_sym_state(sym_state, beginning_state); //TODO: fix copping of sym_state
         std::cout << "Is star operation: " << std::endl;
         /*f (star_operation->is_plus_one()) {
@@ -96,7 +101,7 @@ public:
       // concatenation or star operation
       for (auto operation : regex->getSubexpressions()) {
         //previous_state =
-        process_regex(sym_state, operation, cfg, info, is_star, loop_count, beginning_state);
+        process_regex(sym_state, operation, cfg, info, is_star, loop_count, beginning_state, true);
       }
 
       //return previous_state;
@@ -167,7 +172,7 @@ public:
           auto true_value = value;
           auto bool_value = loop_count.s_mod(SymBitVector::constant(64, 2)) == SymBitVector::constant(64, 0);
           write_value = bool_value.ite(true_value, false_value);
-          info.number_of_bits_changed = SymBitVector::constant(64, 32) * loop_count;
+          info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 32) * loop_count;
         } else {
           write_value = value^SymBitVector::constant(32, 0xFFFFFFFF);
           info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 32);
@@ -197,7 +202,7 @@ public:
           auto true_value = value;
           auto bool_value = loop_count.s_mod(SymBitVector::constant(64, 2)) == SymBitVector::constant(64, 0);
           write_value = bool_value.ite(true_value, false_value);
-          info.number_of_bits_changed = SymBitVector::constant(64, 64) * loop_count;
+          info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 64) * loop_count;
         } else {
           write_value = value^SymBitVector::constant(64, 0xFFFFFFFFFFFFFFFF);
           info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 64);
