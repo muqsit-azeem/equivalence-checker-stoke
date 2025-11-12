@@ -5,11 +5,8 @@
 #ifndef CONCATENATIONOPERATION_H
 #define CONCATENATIONOPERATION_H
 
-#include <iostream>
-#include <memory>
-#include <vector>
 
-#include "src/no_data_validator/operation.h"
+#include "../operation.h"
 
 namespace stoke {
 
@@ -34,7 +31,7 @@ public:
   }
 
   bool equals(const Operation& other) const {
-    if (!dynamic_cast<const ConcatenationOperation*>(&other)) { return false; }
+    if (other.getType() != OperationEnum::CONCATENATION) { return false; }
 
     auto range = subexpressions_.size();
     auto other_subexpressions = other.getSubexpressions();
@@ -46,6 +43,12 @@ public:
     }
     return true;
   }
+
+  OperationEnum getType() const {
+    return OperationEnum::CONCATENATION;
+  }
+
+  std::shared_ptr<Operation> connect_regex(std::shared_ptr<Operation> operation);
 
 };
 }

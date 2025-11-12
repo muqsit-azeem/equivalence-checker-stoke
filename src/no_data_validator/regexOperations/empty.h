@@ -5,9 +5,6 @@
 #ifndef EMPTY_H
 #define EMPTY_H
 
-#include <boost/filesystem/path_traits.hpp>
-#include <boost/move/detail/meta_utils.hpp>
-
 #include "src/no_data_validator/operation.h"
 
 namespace stoke {
@@ -41,6 +38,12 @@ namespace stoke {
 
       return true;
     }
+
+    OperationEnum getType() const {
+      return empty ? OperationEnum::EMPTY : OperationEnum::SYMBOL;
+    }
+
+    std::shared_ptr<Operation> connect_regex(std::shared_ptr<Operation> operation);
 
   private:
     bool empty;

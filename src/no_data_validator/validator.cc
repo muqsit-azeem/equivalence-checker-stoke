@@ -236,7 +236,7 @@ void NoDataValidator::printing_cfg() {
       const x64asm::Instruction& inst = *instruction;
       cout << "Instruction: " <<*instruction << endl;
       std::cout << endl;
-      std::cout << sym_state << endl;
+      //std::cout << sym_state << endl;
       std::cout << std::endl;
       for (auto reg: sym_state.rf)
       {
@@ -253,7 +253,7 @@ void NoDataValidator::printing_cfg() {
       std::cout << "  Maybe Undef:  " << target.maybe_undef_set(*instruction) << std::endl;*/
       //SymbolicInstructionProcessor::process_instruction(&sym_state, &inst, false, false);
       std::cout << endl;
-      std::cout << sym_state << endl;
+      //std::cout << sym_state << endl;
       std::cout << std::endl;
       for (auto reg: sym_state.rf)
       {

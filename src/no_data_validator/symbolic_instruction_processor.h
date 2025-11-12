@@ -266,8 +266,8 @@ public:
         add_subtract_operations(sym_state, reg,  SymBitVector::constant(64, num), true, is_star, loop_count);*/
         break;
       }
-    case x64asm::ADD_R64_M64:
-      break;
+    /*case x64asm::ADD_R64_M64:
+      break;*/
     case x64asm::ADD_R64_R64: { //addq_r64_r64
         x64asm::R64 reg_1 = instruction->get_operand<x64asm::R64>(0);
         x64asm::R64 reg_2 = instruction->get_operand<x64asm::R64>(1);
@@ -275,7 +275,7 @@ public:
         add_subtract_operations(sym_state, reg_1, sym_state->gp[reg_2], true, is_star, loop_count);
         break;
     }
-    case x64asm::ADD_R64_R64_1:
+    /*case x64asm::ADD_R64_R64_1:
     case x64asm::ADD_R8_IMM8:
     case x64asm::ADD_R8_M8:
     case x64asm::ADD_R8_R8:
@@ -289,7 +289,7 @@ public:
     case x64asm::ADD_RH_R8_1:
     case x64asm::ADD_RH_RH:
     case x64asm::ADD_RH_RH_1:
-      break;
+      break;*/
 
     case x64asm::SUB_R32_IMM8: {
         auto reg = instruction->get_operand<x64asm::R32>(0);
@@ -313,7 +313,8 @@ public:
         //temp = temp.sign_extend(64);
         //sym_state->set(x64asm::rsi, temp);
         //SymBitVector temp_temp = sym_state->gp[reg] & (mask << 32) & (temp & mask);
-        sym_state->set(x64asm::rsi, temp);
+        sym_state->set(reg, temp);
+
         //std::cout << "temp:  " << temp_temp <<" width: " << temp_temp.width() << std::endl;
 
         sym_state->set_szp_flags(temp);

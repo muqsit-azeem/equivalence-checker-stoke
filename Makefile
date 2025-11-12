@@ -219,6 +219,12 @@ SRC_OBJ=\
 	src/no_data_validator/RegEx.o\
 	src/no_data_validator/operation.o\
 	src/no_data_validator/smt_alignment_checker.o\
+	\
+	src/no_data_validator/regexOperations/concatenationOperation.o\
+	src/no_data_validator/regexOperations/empty.o\
+	src/no_data_validator/regexOperations/plusOperation.o\
+	src/no_data_validator/regexOperations/starOperation.o\
+	\
 
 ifndef NOCVC4
 SRC_OBJ += 	src/solver/cvc4solver.o
@@ -464,6 +470,9 @@ src/verifier/%.o: src/verifier/%.cc $(DEPS)
 
 src/no_data_validator/%.o: src/no_data_validator/%.cc $(DEPS)
 	$(STOKE_CXX) $(TARGET) $(OPT) $(ARCH_OPT) $(INC) -c $< -o $@
+src/no_data_validator/regexOperations/%.o: src/no_data_validator/regexOperations/%.cc $(DEPS)
+	$(STOKE_CXX) $(TARGET) $(OPT) $(ARCH_OPT) $(INC) -c $< -o $@
+
 
 tools/io/%.o: tools/io/%.cc $(DEPS)
 	$(STOKE_CXX) $(TARGET) $(OPT) $(ARCH_OPT) $(INC) -c $< -o $@

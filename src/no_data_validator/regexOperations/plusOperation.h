@@ -9,10 +9,10 @@
 #include <memory>
 #include <vector>
 
-#include "concatenationOperation.h"
-#include "empty.h"
-#include "starOperation.h"
 #include "src/no_data_validator/operation.h"
+#include "concatenationOperation.h"
+#include "starOperation.h"
+#include "empty.h"
 
 namespace stoke {
 
@@ -24,7 +24,7 @@ namespace stoke {
     }
 
     PlusOperation(std::shared_ptr<Operation> subexpression)
-  : PlusOperation(std::vector<std::shared_ptr<Operation>>{subexpression}) {};
+  : PlusOperation(std::vector<std::shared_ptr<Operation>>{subexpression}) {}
 
     // prev_subexpresion + subexpresion
     void add_subexpression(std::shared_ptr<Operation> subexpression) {
@@ -39,12 +39,12 @@ namespace stoke {
     // prev_subex_1.subexpression + prev_subex_2.subexpression, doesn't work for input of PlusOperation
     //TODO: refine to work for all cases
     void add_to_every_subexpression(std::shared_ptr<Operation> subexpression) {
-      if (subexpression->isEmpty() || std::dynamic_pointer_cast<PlusOperation>(subexpression)) {return;}
+      if (subexpression->isEmpty() || subexpression->getType() == OperationEnum::PLUS) {return;}
 
       int i = -1;
       for (auto subex : subexpressions_) {
         i++;
-        if (std::dynamic_pointer_cast<PlusOperation>(subex)) { // there should not be PlusOperation in PlusOperation
+        if (subex->getType() == OperationEnum::PLUS) { // there should not be PlusOperation in PlusOperation
           assert(false);
           return;
         }
@@ -67,8 +67,7 @@ namespace stoke {
           }
           continue;
         }
-        if (auto casted_operation = std::dynamic_pointer_cast<StarOperation>(subex))
-        {
+        if (auto casted_operation = std::dynamic_pointer_cast<StarOperation>(subex)) {
           std::vector<std::shared_ptr<Operation>> concat_vector;
           concat_vector.push_back(casted_operation);
           if (std::dynamic_pointer_cast<ConcatenationOperation>(subexpression)) {
@@ -84,7 +83,7 @@ namespace stoke {
     }
 
     bool equals(const Operation& other) const {
-      if (!dynamic_cast<const PlusOperation*>(&other)) { return false; }
+      if (other.getType() != OperationEnum::PLUS) { return false; }
 
       auto range = subexpressions_.size();
       auto other_subexpressions = other.getSubexpressions();
@@ -96,6 +95,12 @@ namespace stoke {
       }
       return true;
     }
+
+    OperationEnum getType() const {
+      return OperationEnum::PLUS;
+    }
+
+    std::shared_ptr<Operation> connect_regex(std::shared_ptr<Operation> operation);
   };
 }
 

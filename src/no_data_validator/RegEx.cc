@@ -87,91 +87,8 @@ bool RegEx::initializeRegEx(size_t start, size_t end, std::map<std::tuple<size_t
 
   return !result.empty();
 }
-/*
-void RegEx::joinEdges(size_t pred, size_t succ, size_t node, std::map<std::tuple<size_t,size_t>, std::shared_ptr<Operation>>& regex_map, bool contains_loop) {
 
-  std::tuple<size_t,size_t> node_to_succ = std::make_tuple(node, succ);
-  std::tuple<size_t,size_t> pred_to_node = std::make_tuple(pred, node);
-  std::tuple<size_t,size_t> pred_to_succ = std::make_tuple(pred, succ);
 
-  bool pred_empty = regex_map[pred_to_node]->isEmpty();
-  bool succ_empty = regex_map[node_to_succ]->isEmpty();
-
-  std::shared_ptr<Operation> op;
-  std::vector<std::shared_ptr<Operation>> subexpressions;
-
-  if (!pred_empty) {
-    subexpressions.push_back(regex_map[pred_to_node]);
-  }
-  if (contains_loop) {
-    auto existing_operation = regex_map[std::make_tuple(node, node)];
-    if (!existing_operation->isEmpty()) {
-      std::vector<std::shared_ptr<Operation>> star_vector;
-      star_vector.push_back(existing_operation);
-      std::shared_ptr<StarOperation> star = std::make_shared<StarOperation>(star_vector);
-      subexpressions.push_back(star);
-    }
-  }
-  if (!succ_empty) {
-    subexpressions.push_back(regex_map[node_to_succ]);
-  }
-
-  if (subexpressions.empty()) {
-    op = std::make_shared<Symbol>();
-  } else if (subexpressions.size() == 1) {
-    op = subexpressions[0];
-  } else {
-    std::shared_ptr<ConcatenationOperation> baseConc;
-
-    if (auto conc_op = std::dynamic_pointer_cast<ConcatenationOperation>(subexpressions[0])) {
-      baseConc = conc_op;
-    } else {
-      std::vector<std::shared_ptr<Operation>> subexpressions_conc;
-      subexpressions_conc.push_back(subexpressions[0]);
-      baseConc = std::make_shared<ConcatenationOperation>(subexpressions_conc);
-    }
-
-    if (auto conc_op = std::dynamic_pointer_cast<ConcatenationOperation>(subexpressions[1])) {
-      for (auto op_: conc_op->getSubexpressions()) {
-        baseConc->add_subexpression(op_);
-      }
-    } else {
-      baseConc->add_subexpression(subexpressions[1]);
-    }
-
-    if (subexpressions.size() == 3) {
-      if (auto conc_op = std::dynamic_pointer_cast<ConcatenationOperation>(subexpressions[2])) {
-        for (auto op_: conc_op->getSubexpressions()) {
-          baseConc->add_subexpression(op_);
-        }
-      } else {
-        baseConc->add_subexpression(subexpressions[2]);
-      }
-    }
-
-    op = baseConc;
-  }
-
-  if (regex_map.find(pred_to_succ) == regex_map.end()) {
-    regex_map[pred_to_succ] = op;
-  } else {
-    std::shared_ptr<Operation> existing_op = regex_map[pred_to_succ];
-    if (auto existing_op_casted = std::dynamic_pointer_cast<PlusOperation>(existing_op)) {
-      existing_op_casted->add_subexpression(op);
-    } else {
-      std::vector<std::shared_ptr<Operation>> plus_vector;
-      plus_vector.push_back(op);
-      plus_vector.push_back(existing_op);
-      std::shared_ptr<PlusOperation> plus_operation = std::make_shared<PlusOperation>(plus_vector);
-      regex_map[pred_to_succ] = plus_operation;
-    }
-  }
-
-  regex_map.erase(node_to_succ);
-}
-*/
-
-// TODO: test
 void RegEx::joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::tuple<size_t,size_t>,
     std::shared_ptr<Operation>>& regex_map, bool contains_loop) {
   std::cout << "pred: " << pred << " node: " << node << " succ: " << succ << " loop:" << contains_loop << std::endl;
@@ -180,8 +97,17 @@ void RegEx::joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::
   std::tuple<size_t,size_t> pred_to_node = std::make_tuple(pred, node);
   std::tuple<size_t,size_t> pred_to_succ = std::make_tuple(pred, succ);
 
+  std::cout << "Got here" << std::endl;
   bool pred_empty = regex_map[pred_to_node]->isEmpty();
+  std::cout << "Got here" << std::endl;
+
+  for (auto pair: regex_map) {
+    auto first = pair.first;
+    std::cout << "(" << std::get<0>(first) << " : " << std::get<1>(first) << ") -> " << *pair.second << std::endl;
+  }
+
   bool succ_empty = regex_map[node_to_succ]->isEmpty();
+  std::cout << "Got here" << std::endl;
 
   std::shared_ptr<Operation> op;
   std::vector<std::shared_ptr<Operation>> subexpressions;
@@ -209,7 +135,57 @@ void RegEx::joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::
   } else if (subexpressions.size() == 1) {
     op = subexpressions[0];
   } else {
-    if (auto plus_op = std::dynamic_pointer_cast<PlusOperation>(subexpressions[0])) {
+    op = subexpressions[0];
+    if (subexpressions.size() == 3) {
+      op = op->connect_regex(subexpressions[1]);
+    }
+    op = op->connect_regex(subexpressions.back());
+  }
+
+  if (regex_map.find(pred_to_succ) == regex_map.end()) {
+    regex_map[pred_to_succ] = op;
+  } else {
+    std::shared_ptr<Operation> existing_op = regex_map[pred_to_succ];
+    if (auto existing_op_casted = std::dynamic_pointer_cast<PlusOperation>(existing_op)) {
+      existing_op_casted->add_subexpression(op);
+    } else {
+      std::vector<std::shared_ptr<Operation>> plus_vector;
+      plus_vector.push_back(op);
+      plus_vector.push_back(existing_op);
+      std::shared_ptr<PlusOperation> plus_operation = std::make_shared<PlusOperation>(plus_vector);
+      regex_map[pred_to_succ] = plus_operation;
+    }
+  }
+
+}
+
+// this function expects the subexpression to be at least of size 2
+void RegEx::connectRegex(shared_ptr<Operation>& op, std::vector<std::shared_ptr<Operation>>& subexpressions) {
+
+  op = subexpressions[0];
+
+  if (subexpressions[1]->getType() == OperationEnum::PLUS) {
+    if (op->getType() == OperationEnum::PLUS) {
+      std::vector<std::shared_ptr<Operation>>  plus_vector;
+
+      for (auto first_subex: op->getSubexpressions()) { // should not be PlusOperation
+        for (auto last_subex : subexpressions[1]->getSubexpressions()) { // should not be PlusOperation
+          if (first_subex->isEmpty()) {
+            plus_vector.push_back(last_subex);
+          } else if (auto first_op = std::dynamic_pointer_cast<ConcatenationOperation>(first_subex)) {
+            first_op->add_subexpression(last_subex);
+            plus_vector.push_back(first_op);
+          } else {
+            std::shared_ptr<ConcatenationOperation> new_operation = std::make_shared<ConcatenationOperation>(first_subex);
+            new_operation->add_subexpression(last_subex);
+            plus_vector.push_back(new_operation);
+          }
+        }
+      }
+    }
+  }
+
+  /*if (auto plus_op = std::dynamic_pointer_cast<PlusOperation>(subexpressions[0])) {
       std::vector<std::shared_ptr<Operation>> final_plus_vector = std::vector<std::shared_ptr<Operation>> (plus_op->getSubexpressions());
       std::shared_ptr<PlusOperation> final_plus_op = std::make_shared<PlusOperation>(plus_op->getSubexpressions());
 
@@ -271,30 +247,14 @@ void RegEx::joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::
         std::shared_ptr<ConcatenationOperation> new_operation = std::make_shared<ConcatenationOperation>(operation_vector);
         op = new_operation;
       }
-    }
-  }
-
-  if (regex_map.find(pred_to_succ) == regex_map.end()) {
-    regex_map[pred_to_succ] = op;
-  } else {
-    std::shared_ptr<Operation> existing_op = regex_map[pred_to_succ];
-    if (auto existing_op_casted = std::dynamic_pointer_cast<PlusOperation>(existing_op)) {
-      existing_op_casted->add_subexpression(op);
-    } else {
-      std::vector<std::shared_ptr<Operation>> plus_vector;
-      plus_vector.push_back(op);
-      plus_vector.push_back(existing_op);
-      std::shared_ptr<PlusOperation> plus_operation = std::make_shared<PlusOperation>(plus_vector);
-      regex_map[pred_to_succ] = plus_operation;
-    }
-  }
-  regex_map.erase(node_to_succ);
+    }*/
 }
 
 void RegEx::sympifyRegex(size_t start, size_t end, std::map<std::tuple<size_t,size_t>,
     std::shared_ptr<Operation>>& regex_map, std::set<size_t>& nodes_between, std::map<size_t,
     std::set<size_t>>& succs, std::map<size_t, std::set<size_t>>& preds) {
   //INPUT_STOP("SIMPLIFY REGEX")
+  std::cout << "SYMPLIFY REGEX END: " << end << std::endl;
   tuple<size_t,size_t> start_state = make_tuple(std::numeric_limits<size_t>::max(), start);
   tuple<size_t,size_t> end_state = make_tuple(end, std::numeric_limits<size_t>::max());
   regex_map.insert(std::make_pair(start_state, std::make_shared<Symbol>()));
@@ -319,13 +279,20 @@ void RegEx::sympifyRegex(size_t start, size_t end, std::map<std::tuple<size_t,si
 
         joinEdgesSplit(pred, succ, node, regex_map, contains_loop);
 
-        preds[succ].erase(node);
-        preds[succ].insert(pred);
-        succs[pred].insert(succ);
       }
 
       succs[pred].erase(node);
       regex_map.erase(std::make_tuple(pred,node));
+
+      for (size_t succ : succs[node]) {
+        preds[succ].insert(pred);
+        succs[pred].insert(succ);
+      }
+    }
+
+    for (size_t succ : succs[node]) {
+      preds[succ].erase(node);
+      regex_map.erase(std::make_tuple(node, succ));
     }
 
     if (contains_loop) { regex_map.erase(std::make_tuple(node,node)); }

@@ -9,9 +9,10 @@
 #include <memory>
 #include <vector>
 
-#include "src/no_data_validator/operation.h"
+#include "../operation.h"
 
 namespace stoke {
+
 class StarOperation : public Operation {
 public:
 
@@ -51,6 +52,12 @@ public:
   bool is_plus_one() {
     return plus_one_;
   }
+
+  OperationEnum getType() const {
+    return OperationEnum::STAR;
+  }
+
+  std::shared_ptr<Operation> connect_regex(std::shared_ptr<Operation> operation);
 
 private:
 
