@@ -41,7 +41,7 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   }
   */
 
-  std::cout << "p = " << *p << " q: " << *q << std::endl;
+  std::cout << std::endl << "p = " << *p << " q: " << *q << std::endl;
 
   bool separate_stack = separate_stack_ || override_separate_stack;
 
@@ -165,9 +165,20 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   //bool_vector.insert(bool_vector.end(), target_processing_info.memory_axioms.begin(), target_processing_info.memory_axioms.end());
   //bool_vector.insert(bool_vector.end(), rewrite_processing_info.memory_axioms.begin(), rewrite_processing_info.memory_axioms.end());
 
-  if (start_1 == 0 && end_1 == 3 && start_2 == 0 && end_2 == 4)
+  if (start_1 == 0 && end_1 == 0 && start_2 == 0 && end_2 == 5)
   {
-    std::cout << " 33, 35  LOOP TRY"<< std::endl;
+    std::vector<string> star_variables = target_processing_info.star_variable_names;
+    star_variables.insert(star_variables.end(), rewrite_processing_info.star_variable_names.begin(), rewrite_processing_info.star_variable_names.end());
+    bool result = smallestStar(star_variables, star_map,bool_vector);
+    std::cout << "RESULT: " << result << std::endl;
+    std::cout << "ERROR: " << solver_->has_error() << std::endl;
+    if (solver_->has_error())
+    {
+      std::cout << solver_->get_error()<< std::endl;
+    }
+    std::string input; std::cin >> input;
+
+    //std::cout << " 33, 35  LOOP TRY"<< std::endl;
     //std::string input; std::cin >> input;
     //SymBitVector variable = SymBitVector::var(64, "star_vector_num_487");
     //SymBool bool_bool = (variable == SymBitVector::constant(64, 0));
@@ -202,6 +213,7 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   std::cout << "ERROR: " << solver_->has_error() << std::endl;
   if (solver_->has_error()) {
     std::cout << solver_->get_error()<< std::endl;
+    std::string input; std::cin >> input;
   }
 
 
@@ -224,11 +236,17 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
 
 
 bool SmtAlignmentChecker::smallestStar(std::vector<string> star_variables, std::map<string, uint64_t>& star_map, std::vector<SymBool>& bool_vector) {
+  std::cout<< std::endl << "******************** Smallest STAR: ******************" << std::endl;
+  for (auto bol: bool_vector) {
+    std::cout << bol << std::endl;
+  }
+
   if (solver_->is_sat(bool_vector)) {
+    std::cout << "the solver found the answer right away" << std::endl;
     for (auto star_ : star_variables) {
       star_map[star_] = solver_->get_model_bv(star_, 64).get_fixed_quad(0);
     }
-  } else {return false;}
+  } else {std::cout << "the solver failed" << std::endl; return false;}
 
   // what if star is 0? maybe stop there
   for (auto star : star_variables) {
@@ -242,18 +260,25 @@ bool SmtAlignmentChecker::smallestStar(std::vector<string> star_variables, std::
       SymBool star_bound = symbolic_star.s_lt(current_sym_star);
       //std::cout << "Current sym star: " << current_sym_star << std::endl;
       bool_vector.push_back(star_bound);
-      if (auto resut = solver_->is_sat(bool_vector)) {
-        std::cout << "SMT result in smallest star: " << resut << std::endl;
+      auto result = solver_->is_sat(bool_vector);
+      std::cout << "SMT result in smallest star: " << result << std::endl;
+      if (result) {
         star_map[star] = solver_->get_model_bv(star, 64).get_fixed_quad(0);
       } else {
+        if (solver_->has_error()) {
+          std::cout << "ERROR: " << solver_->get_error()<< std::endl;
+          std::string input; std::cin >> input;
+          return false;
+        }
         for (auto i : bool_vector)
         {
-          std::cout << i << std::endl;
+          std::cout << "i: " << i << std::endl;
         }
         std::cout << "Got canceled" <<std::endl;
         bool_vector.pop_back();
         min_found = true;
       }
+      bool_vector.pop_back();
     }
   }
 

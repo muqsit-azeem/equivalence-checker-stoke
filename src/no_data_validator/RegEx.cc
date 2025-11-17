@@ -97,9 +97,7 @@ void RegEx::joinEdgesSplit(size_t pred, size_t succ, size_t node, std::map<std::
   std::tuple<size_t,size_t> pred_to_node = std::make_tuple(pred, node);
   std::tuple<size_t,size_t> pred_to_succ = std::make_tuple(pred, succ);
 
-  std::cout << "Got here" << std::endl;
   bool pred_empty = regex_map[pred_to_node]->isEmpty();
-  std::cout << "Got here" << std::endl;
 
   for (auto pair: regex_map) {
     auto first = pair.first;
@@ -286,7 +284,9 @@ void RegEx::sympifyRegex(size_t start, size_t end, std::map<std::tuple<size_t,si
 
       for (size_t succ : succs[node]) {
         preds[succ].insert(pred);
-        succs[pred].insert(succ);
+        if (node != succ) {
+          succs[pred].insert(succ);
+        }
       }
     }
 
