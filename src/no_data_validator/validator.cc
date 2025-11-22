@@ -206,7 +206,7 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
   paa.simplify();
   //paa.remove_prefixes();
   paa.print_all();
-  std::string input; std::cin >> input;
+  //std::string input; std::cin >> input;
   //paa.remove_prefixes();
   //
   return true;
@@ -265,7 +265,7 @@ void NoDataValidator::printing_cfg() {
     }
     ++states;
   }
-  std::string input; std::cin >> input;
+  //std::string input; std::cin >> input;
 
   cout << "Target: " << endl;
   cout << target.get_code() << endl;

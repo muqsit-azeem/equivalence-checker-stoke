@@ -132,7 +132,7 @@ def validate(compiler1, compiler2, benchmark, dofork=false)
   end
 
   stoke_args = [
-    "--strategy ddec",
+    "--strategy no_data",
     "--solver z3",
     "--alias_strategy flat",
     "--target #{compiler1}/#{benchmark}.s",

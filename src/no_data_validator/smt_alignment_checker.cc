@@ -115,26 +115,26 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
 
   for (auto cons : target_processing_info.star_constraints)
   {
-    std::cout << "Star CONSTRAINT "<< cons <<std::endl;
+    //std::cout << "Star CONSTRAINT "<< cons <<std::endl;
     //sym_bool = sym_bool & cons;
     bool_vector.push_back(cons);
   }
   for (auto cons : rewrite_processing_info.star_constraints)
   {
-    std::cout << "Star CONSTRAINT "<< cons <<std::endl;
+    //std::cout << "Star CONSTRAINT "<< cons <<std::endl;
     //sym_bool = sym_bool & cons;
     bool_vector.push_back(cons);
   }
 
   for (auto cons : target_sym_state.constraints)
   {
-    std::cout << " CONSTRAINT "<< cons <<std::endl;
+    //std::cout << " CONSTRAINT "<< cons <<std::endl;
     //sym_bool = sym_bool & cons;
     bool_vector.push_back(cons);
   }
   for (auto cons : rewrite_sym_state.constraints)
   {
-    std::cout << " CONSTRAINT "<< cons <<std::endl;
+    //std::cout << " CONSTRAINT "<< cons <<std::endl;
     //sym_bool = sym_bool & cons;
     bool_vector.push_back(cons);
   }
@@ -176,7 +176,7 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
     {
       std::cout << solver_->get_error()<< std::endl;
     }
-    std::string input; std::cin >> input;
+    //std::string input; std::cin >> input;
 
     //std::cout << " 33, 35  LOOP TRY"<< std::endl;
     //std::string input; std::cin >> input;
@@ -199,8 +199,8 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
     return result;*/
   }
 
-  std::cout << "SYM Bool: " << std::endl;
-  std::cout << sym_bool << std::endl;
+  //std::cout << "SYM Bool: " << std::endl;
+  //std::cout << sym_bool << std::endl;
 
   //\std::cout << "MEM Bool: " << std::endl;
   //std::cout << mem_bool << std::endl;
@@ -217,18 +217,18 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   }
 
 
-  if (start_1 == 3 && end_1 == 3 && start_2 == 2 && end_2 == 4)
+  if (start_1 == 0 && end_1 == 0 && start_2 == 0 && end_2 == 3)
   {
-    std::cout << " 03, 03  LOOP TRY"<< std::endl;
-    for (auto i : bool_vector)
+    std::cout << " 00, 03  LOOP TRY"<< std::endl;
+    /*for (auto i : bool_vector)
     {
       std::cout << i << std::endl;
     }
     for (auto i : star_map)
     {
       std::cout << i.first << ": " << i.second << std::endl;
-    }
-    std::string input; std::cin >> input;
+    }*/
+    //std::string input; std::cin >> input;
   }
 
   return result;
@@ -237,9 +237,9 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
 
 bool SmtAlignmentChecker::smallestStar(std::vector<string> star_variables, std::map<string, uint64_t>& star_map, std::vector<SymBool>& bool_vector) {
   std::cout<< std::endl << "******************** Smallest STAR: ******************" << std::endl;
-  for (auto bol: bool_vector) {
+  /*for (auto bol: bool_vector) {
     std::cout << bol << std::endl;
-  }
+  }*/
 
   if (solver_->is_sat(bool_vector)) {
     std::cout << "the solver found the answer right away" << std::endl;
@@ -267,13 +267,13 @@ bool SmtAlignmentChecker::smallestStar(std::vector<string> star_variables, std::
       } else {
         if (solver_->has_error()) {
           std::cout << "ERROR: " << solver_->get_error()<< std::endl;
-          std::string input; std::cin >> input;
+          //std::string input; std::cin >> input;
           return false;
         }
-        for (auto i : bool_vector)
+        /*for (auto i : bool_vector)
         {
           std::cout << "i: " << i << std::endl;
-        }
+        }*/
         std::cout << "Got canceled" <<std::endl;
         bool_vector.pop_back();
         min_found = true;

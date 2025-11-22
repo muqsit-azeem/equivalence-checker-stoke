@@ -345,7 +345,7 @@ bool DdecValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invariant>
   }
 
   paa.print_all();
-  std::string input; std::cin >> input;
+  //std::string input; std::cin >> input;
   return true;
 }
 
@@ -769,7 +769,7 @@ bool DdecValidator::test_alignment_predicate(shared_ptr<Invariant> invariant) {
 
   cout << "TRYING THIS PAA!" << endl;
   paa.print_all();
-  std::string input; std::cin >> input;
+  //std::string input; std::cin >> input;
   bool works = verify_paa(paa);
   return works;
 }

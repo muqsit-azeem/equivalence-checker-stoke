@@ -75,7 +75,7 @@ public:
           instruction++;
         }
 
-        return; //cfg_state;
+        return;
       }
 
       if (auto star_operation = std::dynamic_pointer_cast<StarOperation>(regex)) {
@@ -108,7 +108,6 @@ public:
     }
 
 //private:   // due to testing
-  // TODO: add star function
   static bool process_instruction(SymState* sym_state, const x64asm::Instruction* instruction, ProcessingInfo& info,
       bool is_star, SymBitVector& loop_count, SymRegs& beginning_state) {
     auto opcode = instruction->get_opcode();
@@ -118,7 +117,8 @@ public:
 
     //std::cout << "loop_count: "  << loop_count << std::endl;
 
-    switch (opcode) {
+    switch (opcode)
+    {
     case x64asm::TEST_AL_IMM8: {
       auto al = instruction->get_operand<x64asm::Al>(0);
       auto num = instruction->get_operand<x64asm::Imm8>(1);
@@ -130,23 +130,25 @@ public:
       break;
     }
     case x64asm::TEST_R8_IMM8: {
-        auto reg = instruction->get_operand<x64asm::R8>(0);
-        auto num = instruction->get_operand<x64asm::Imm8>(1);
-        auto masked_reg = sym_state->gp[reg] & SymBitVector::constant(8, 0xFF).zero_extend(64);
+      auto reg = instruction->get_operand<x64asm::R8>(0);
+      auto num = instruction->get_operand<x64asm::Imm8>(1);
+      auto masked_reg = sym_state->gp[reg] & SymBitVector::constant(8, 0xFF).zero_extend(64);
 
-        auto temp = masked_reg  & SymBitVector::constant(8, num).zero_extend(64);
-        //auto temp_64 = temp.sign_extend(64);
-        sym_state->set_szp_flags(temp, 64);
-        break;
+      auto temp = masked_reg  & SymBitVector::constant(8, num).zero_extend(64);
+      //auto temp_64 = temp.sign_extend(64);
+      sym_state->set_szp_flags(temp, 64);
+      break;
     }
     case x64asm::TEST_R32_R32: {
-        auto reg_1 = instruction->get_operand<x64asm::R32>(0);
-        auto reg_2 = instruction->get_operand<x64asm::R32>(1);
-        auto mask = SymBitVector::constant(32, 0xFFFFFFFF).zero_extend(64);
+      auto reg_1 = instruction->get_operand<x64asm::R32>(0);
+      auto reg_2 = instruction->get_operand<x64asm::R32>(1);
+      auto reg32_1 = sym_state->gp[reg_1][31][0];
+      auto reg32_2 = sym_state->gp[reg_2][31][0];
+      //auto mask = SymBitVector::constant(32, 0xFFFFFFFF).zero_extend(64);
 
-        auto temp = sym_state->gp[reg_1]  & sym_state->gp[reg_2] & mask;
-        sym_state->set_szp_flags(temp, 64);
-        break;
+      auto temp = reg32_1  & reg32_2;
+      sym_state->set_szp_flags(temp);
+      break;
     }
     case x64asm::TEST_R64_R64: {
       auto reg_1 = instruction->get_operand<x64asm::R64>(0);
@@ -157,194 +159,207 @@ public:
       break;
     }
     case x64asm::JLE_LABEL: {
-      sym_state->add_constraint(!(*sym_state)[x64asm::eflags_zf] | (*sym_state)[eflags_sf] != (*sym_state)[eflags_of] );
+      sym_state->add_constraint(!(*sym_state)[x64asm::eflags_zf] | (*sym_state)[eflags_sf] );
       info.prev_state_ends_with_jump = true;
       break;
     }
     case x64asm::JNE_LABEL: {
-      sym_state->add_constraint(!(*sym_state)[x64asm::eflags_zf]);
-      info.prev_state_ends_with_jump = true;
-      break;
+        sym_state->add_constraint(!(*sym_state)[x64asm::eflags_zf]);
+        info.prev_state_ends_with_jump = true;
+        break;
     }
     case x64asm::JE_LABEL: {
-      /*std::cout << "ZERO FLAG: " << (* sym_state)[x64asm::eflags_zf] << std::endl;
-      std::cout << is_condition << std::endl;
-      SymBool condition = is_condition ?
-                          (*sym_state)[x64asm::eflags_zf] :
-                          !(*sym_state)[x64asm::eflags_zf];*/
       sym_state->add_constraint((*sym_state)[x64asm::eflags_zf]);
       info.prev_state_ends_with_jump = true;
       break;
     }
-    case x64asm::AND_R64_R64: {
-      auto reg_1 = instruction->get_operand<x64asm::R64>(0);
-      auto reg_2 = instruction->get_operand<x64asm::R64>(1);
-      auto temp = sym_state->gp[reg_1] & sym_state->gp[reg_2];
-
-      sym_state->set_szp_flags(temp, 64);
-      sym_state->set(reg_1, temp);
+    case x64asm::JA_LABEL: {
+      sym_state->add_constraint(!(*sym_state)[x64asm::eflags_cf] & !(*sym_state)[x64asm::eflags_zf]);
+      info.prev_state_ends_with_jump = true;
       break;
+    }
+    case x64asm::JS_LABEL: {
+      sym_state->add_constraint((*sym_state)[x64asm::eflags_sf]);
+      info.prev_state_ends_with_jump = true;
+      break;
+    }
+    case x64asm::JG_LABEL: {
+      sym_state->add_constraint(((*sym_state)[x64asm::eflags_sf] == (*sym_state)[x64asm::eflags_of]) & !(*sym_state)[x64asm::eflags_zf]);
+      info.prev_state_ends_with_jump = true;
+      break;
+    }
+    case x64asm::AND_R64_R64: {
+        auto reg_1 = instruction->get_operand<x64asm::R64>(0);
+        auto reg_2 = instruction->get_operand<x64asm::R64>(1);
+        auto temp = sym_state->gp[reg_1] & sym_state->gp[reg_2];
+
+        sym_state->set_szp_flags(temp, 64);
+        sym_state->set(reg_1, temp);
+        break;
     }
     case x64asm::NOT_R64:{
-      auto reg = instruction->get_operand<x64asm::R64>(0);
+        auto reg = instruction->get_operand<x64asm::R64>(0);
 
-      if (is_star) {
-        auto bool_value = loop_count.s_mod(SymBitVector::constant(64, 2)) == SymBitVector::constant(64, 0);
-        sym_state->set(reg, bool_value.ite(sym_state->gp[reg], sym_state->gp[reg]^SymBitVector::constant(64, 0xFFFFFFFFFFFFFFFF)));
+        if (is_star) {
+          auto bool_value = loop_count.s_mod(SymBitVector::constant(64, 2)) == SymBitVector::constant(64, 0);
+          sym_state->set(reg, bool_value.ite(sym_state->gp[reg], sym_state->gp[reg]^SymBitVector::constant(64, 0xFFFFFFFFFFFFFFFF)));
+          break;
+        }
+        sym_state->set(reg, sym_state->gp[reg]^SymBitVector::constant(64, 0xFFFFFFFFFFFFFFFF));
         break;
-      }
-      sym_state->set(reg, sym_state->gp[reg]^SymBitVector::constant(64, 0xFFFFFFFFFFFFFFFF));
-      break;
     }
     case x64asm::NOT_M32: {
-      auto mem = instruction->get_operand<x64asm::M32>(0);
-      auto addres = sym_state->get_addr(mem);
-      std::cout << "M32: " << mem << " On the adress: " << addres << endl;
-      DereferenceInfo dereference;
-      SymBitVector value = (sym_state->memory)->read(addres, 32, dereference).first;
-      std::cout << "value: " << value << " size: " << value.width() << std::endl;
+        auto mem = instruction->get_operand<x64asm::M32>(0);
+        auto addres = sym_state->get_addr(mem);
+        //std::cout << "M32: " << mem << " On the adress: " << addres << endl;
+        DereferenceInfo dereference;
+        SymBitVector value = (sym_state->memory)->read(addres, 32, dereference).first;
+        //std::cout << "value: " << value << " size: " << value.width() << std::endl;
 
-      SymBitVector write_value;
+        SymBitVector write_value;
 
-      if (is_star) {
-        auto false_value = value^SymBitVector::constant(32, 0xFFFFFFFF);
-        auto true_value = value;
-        auto bool_value = loop_count.s_mod(SymBitVector::constant(64, 2)) == SymBitVector::constant(64, 0);
-        write_value = bool_value.ite(true_value, false_value);
-        info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 32) * loop_count;
-      } else {
-        write_value = value^SymBitVector::constant(32, 0xFFFFFFFF);
-        info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 32);
-      }
+        if (is_star) {
+          auto false_value = value^SymBitVector::constant(32, 0xFFFFFFFF);
+          auto true_value = value;
+          auto bool_value = loop_count.s_mod(SymBitVector::constant(64, 2)) == SymBitVector::constant(64, 0);
+          write_value = bool_value.ite(true_value, false_value);
+          info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 32) * loop_count;
+        } else {
+          write_value = value^SymBitVector::constant(32, 0xFFFFFFFF);
+          info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 32);
+        }
 
 
-      std::cout << "Write value: " << write_value << " write value size: " << write_value.width() << std::endl;
-      SymBool memory_constrain = sym_state->memory->write(addres, write_value, 32, dereference);
-      sym_state->add_constraint(!memory_constrain);
-      info.memory_axioms.push_back(value == write_value);
+        std::cout << "Write value: " << write_value << " write value size: " << write_value.width() << std::endl;
+        SymBool memory_constrain = sym_state->memory->write(addres, write_value, 32, dereference);
+        sym_state->add_constraint(!memory_constrain);
+        info.memory_axioms.push_back(value == write_value);
 
-      //std::cout << "What on the mem: " << (sym_state->memory)->read(addres, 32, dereference).first << endl;
-      break;
+        //std::cout << "What on the mem: " << (sym_state->memory)->read(addres, 32, dereference).first << endl;
+        break;
     }
     case x64asm::NOT_M64: {
-      auto mem = instruction->get_operand<x64asm::M64>(0);
-      auto addres = sym_state->get_addr(mem);
-      DereferenceInfo dereference;
+        auto mem = instruction->get_operand<x64asm::M64>(0);
+        auto addres = sym_state->get_addr(mem);
+        DereferenceInfo dereference;
 
-      auto value = (sym_state->memory)->read(addres, 64, dereference).first;
-      std::cout << "NOT M64 break?" << std::endl;
+        auto value = (sym_state->memory)->read(addres, 64, dereference).first;
+        std::cout << "NOT M64 break?" << std::endl;
 
-      SymBitVector write_value;
+        SymBitVector write_value;
 
-      if (is_star) {
-        auto false_value = value^SymBitVector::constant(64, 0xFFFFFFFFFFFFFFFF);
-        auto true_value = value;
-        auto bool_value = loop_count.s_mod(SymBitVector::constant(64, 2)) == SymBitVector::constant(64, 0);
-        write_value = bool_value.ite(true_value, false_value);
-        info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 64) * loop_count;
-      } else {
-        write_value = value^SymBitVector::constant(64, 0xFFFFFFFFFFFFFFFF);
-        info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 64);
-      }
+        if (is_star) {
+          auto false_value = value^SymBitVector::constant(64, 0xFFFFFFFFFFFFFFFF);
+          auto true_value = value;
+          auto bool_value = loop_count.s_mod(SymBitVector::constant(64, 2)) == SymBitVector::constant(64, 0);
+          write_value = bool_value.ite(true_value, false_value);
+          info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 64) * loop_count;
+        } else {
+          write_value = value^SymBitVector::constant(64, 0xFFFFFFFFFFFFFFFF);
+          info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 64);
+        }
 
-      SymBool memory_constrain = sym_state->memory->write(addres, write_value, 64, dereference);
-      sym_state->add_constraint(!memory_constrain);
-      info.memory_axioms.push_back(value == write_value);
+        SymBool memory_constrain = sym_state->memory->write(addres, write_value, 64, dereference);
+        sym_state->add_constraint(!memory_constrain);
+        info.memory_axioms.push_back(value == write_value);
 
-      break;
+        break;
     }
     case x64asm::XOR_R32_R32: {
-      auto destination = instruction->get_operand<x64asm::R32>(0);
-      auto source = instruction->get_operand<x64asm::R32>(1);
+        auto destination = instruction->get_operand<x64asm::R32>(0);
+        auto source = instruction->get_operand<x64asm::R32>(1);
 
-      auto temp = sym_state->gp[destination][31][0] ^ sym_state->gp[source][31][0];
-      sym_state->set(destination, temp);
-      sym_state->set_szp_flags(temp);
+        auto temp = sym_state->gp[destination][31][0] ^ sym_state->gp[source][31][0];
+        sym_state->set(destination, temp);
+        sym_state->set_szp_flags(temp);
+        break;
+    }
+    case x64asm::SHL_R32_IMM8: {
+        auto reg = instruction->get_operand<x64asm::R32>(0);
+        auto reg_32 = sym_state->gp[reg][31][0];
+        auto num = SymBitVector::constant(32, instruction->get_operand<x64asm::Imm8>(1));
+        auto temp = reg_32 << num;
+
+        sym_state->set(reg, temp[31][0]);
+        sym_state->set_szp_flags(temp[31][0]);
+        break;
     }
     case x64asm::SHR_R32_IMM8: {
-      auto reg = instruction->get_operand<x64asm::R32>(0);
-      auto num = SymBitVector::constant(32, instruction->get_operand<x64asm::Imm32>(1));
-      auto temp = sym_state->gp[reg].s_shr(num);
+        auto reg = instruction->get_operand<x64asm::R32>(0);
+        auto reg_32 = sym_state->gp[reg][31][0];
+        auto num = SymBitVector::constant(32, instruction->get_operand<x64asm::Imm8>(1));
+        auto temp = reg_32 >> num;
+        std::cout << "SHR_R32_IMM8 width: " << temp.width() << std::endl;
+        sym_state->set(reg, temp[31][0]);
+        sym_state->set_szp_flags(temp[31][0]);
+        break;
     }
-    /*case x64asm::ADD_AL_IMM8:
-    case x64asm::ADD_AX_IMM16:
-    case x64asm::ADD_EAX_IMM32:
-    case x64asm::ADD_M16_IMM16:
-    case x64asm::ADD_M16_IMM8:
-    case x64asm::ADD_M16_R16:
-    case x64asm::ADD_M32_IMM32:
-    case x64asm::ADD_M32_IMM8:
-    case x64asm::ADD_M32_R32:
-    case x64asm::ADD_M64_IMM32:
-    case x64asm::ADD_M64_IMM8:
-    case x64asm::ADD_M64_R64:
-    case x64asm::ADD_M8_IMM8:
-    case x64asm::ADD_M8_R8:
-    case x64asm::ADD_M8_RH:
-      break;
-
-    case x64asm::ADD_R16_IMM16:
-    case x64asm::ADD_R16_IMM8:
-    case x64asm::ADD_R16_M16:
-    case x64asm::ADD_R16_R16:
-    case x64asm::ADD_R16_R16_1:
-    case x64asm::ADD_R32_IMM32:
-
-    case x64asm::ADD_R32_M32:
-    case x64asm::ADD_R32_R32:
-    case x64asm::ADD_R32_R32_1:
-      break;*/
     case x64asm::ADD_R32_IMM8: {
-      auto reg = instruction->get_operand<x64asm::R32>(0);
+        auto reg = instruction->get_operand<x64asm::R32>(0);
+        SymBitVector reg32 = (sym_state->gp[reg])[31][0];
+        SymBitVector num = SymBitVector::constant(8,instruction->get_operand<x64asm::Imm8>(1)).sign_extend(32);
+
+        SymBitVector temp = is_star ? (reg32) + (num * (loop_count[31][0])) : (reg32) + num;
+
+        sym_state->set(reg, temp);
+        sym_state->set_szp_flags(temp);
+        break;
+    }
+    case x64asm::ADD_R32_M32: {
+        auto reg = instruction->get_operand<x64asm::R32>(0);
+        SymBitVector reg32 = (sym_state->gp[reg])[31][0];
+        auto mem = instruction->get_operand<x64asm::M32>(1);
+        auto mem_loc = sym_state->get_addr(mem);
+        DereferenceInfo dereference_info;
+        auto num = sym_state->memory->read(mem_loc, 32, dereference_info).first;
+
+        SymBitVector temp = is_star ? (reg32) + (num * (loop_count[31][0])) : (reg32) + num;
+
+        sym_state->set(reg, temp);
+        sym_state->set_szp_flags(temp);
+        break;
+    }
+    case x64asm::ADD_R64_IMM32: {
+        auto reg = instruction->get_operand<x64asm::R64>(0);
+        auto num = instruction->get_operand<x64asm::Imm32>(1);
+        add_subtract_operations(sym_state, reg,  SymBitVector::constant(64, num), true, is_star, loop_count);
+        break;
+    }
+    case x64asm::ADD_R64_IMM8: {
+        auto reg = instruction->get_operand<x64asm::R64>(0);
+        SymBitVector num = SymBitVector::constant(8,instruction->get_operand<x64asm::Imm8>(1)).sign_extend(64);
+
+        SymBitVector temp = is_star ? num * loop_count + sym_state->gp[reg] : num + sym_state->gp[reg];
+
+        sym_state->set(reg, temp);
+        sym_state->set_szp_flags(temp, 64);
+        break;
+    }
+    case x64asm::ADD_R64_R64: { //addq_r64_r64
+      x64asm::R64 reg_1 = instruction->get_operand<x64asm::R64>(0);
+      x64asm::R64 reg_2 = instruction->get_operand<x64asm::R64>(1);
+      //std::cout << "reg_1 = " << reg_1 << " reg_2 = " << reg_2 << std::endl;
+      add_subtract_operations(sym_state, reg_1, sym_state->gp[reg_2], true, is_star, loop_count);
+      break;
+    }
+    case x64asm::ADD_M32_R32: {
+      auto mem = instruction->get_operand<x64asm::M32>(0);
+      auto mem_loc = sym_state->get_addr(mem);
+      auto reg = instruction->get_operand<x64asm::R32>(1);
       SymBitVector reg32 = (sym_state->gp[reg])[31][0];
-      SymBitVector num = SymBitVector::constant(8,instruction->get_operand<x64asm::Imm8>(1)).sign_extend(32);
+
+      DereferenceInfo dereference_info_r;
+      auto num = sym_state->memory->read(mem_loc, 32, dereference_info_r).first;
 
       SymBitVector temp = is_star ? (reg32) + (num * (loop_count[31][0])) : (reg32) + num;
 
-      sym_state->set(reg, temp);
+      DereferenceInfo dereference_info_w;
+      sym_state->memory->write(mem_loc, temp, 32, dereference_info_w);
+      is_star ? info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 32) * loop_count
+              : info.number_of_bits_changed = info.number_of_bits_changed +  SymBitVector::constant(64, 32);
       sym_state->set_szp_flags(temp);
       break;
     }
-    case x64asm::ADD_R64_IMM32: {
-      auto reg = instruction->get_operand<x64asm::R64>(0);
-      auto num = instruction->get_operand<x64asm::Imm32>(1);
-      add_subtract_operations(sym_state, reg,  SymBitVector::constant(64, num), true, is_star, loop_count);
-      break;
-    }
-    case x64asm::ADD_R64_IMM8: {
-      auto reg = instruction->get_operand<x64asm::R64>(0);
-      SymBitVector num = SymBitVector::constant(8,instruction->get_operand<x64asm::Imm8>(1)).sign_extend(64);
-
-      SymBitVector temp = is_star ? num * loop_count + sym_state->gp[reg] : num + sym_state->gp[reg];
-
-      sym_state->set(reg, temp);
-      sym_state->set_szp_flags(temp, 64);
-      break;
-    }
-    /*case x64asm::ADD_R64_M64:
-      break;*/
-    case x64asm::ADD_R64_R64: { //addq_r64_r64
-        x64asm::R64 reg_1 = instruction->get_operand<x64asm::R64>(0);
-        x64asm::R64 reg_2 = instruction->get_operand<x64asm::R64>(1);
-        //std::cout << "reg_1 = " << reg_1 << " reg_2 = " << reg_2 << std::endl;
-        add_subtract_operations(sym_state, reg_1, sym_state->gp[reg_2], true, is_star, loop_count);
-        break;
-    }
-    /*case x64asm::ADD_R64_R64_1:
-    case x64asm::ADD_R8_IMM8:
-    case x64asm::ADD_R8_M8:
-    case x64asm::ADD_R8_R8:
-    case x64asm::ADD_R8_R8_1:
-    case x64asm::ADD_R8_RH:
-    case x64asm::ADD_R8_RH_1:
-    case x64asm::ADD_RAX_IMM32:
-    case x64asm::ADD_RH_IMM8:
-    case x64asm::ADD_RH_M8:
-    case x64asm::ADD_RH_R8:
-    case x64asm::ADD_RH_R8_1:
-    case x64asm::ADD_RH_RH:
-    case x64asm::ADD_RH_RH_1:
-      break;*/
     case x64asm::PADDD_XMM_XMM: {
       auto xmm_1 = instruction->get_operand<x64asm::Xmm>(0);
       auto xmm_2 = instruction->get_operand<x64asm::Xmm>(1);
@@ -392,6 +407,37 @@ public:
     case x64asm::LABEL_DEFN: // check this up
     case x64asm::RET:
       break;
+    case x64asm::MOV_R32_IMM32: {
+      auto reg_1 = instruction->get_operand<x64asm::R32>(0);
+      auto num = SymBitVector::constant(32,instruction->get_operand<x64asm::Imm32>(1));
+      sym_state->set(reg_1, num);
+      break;
+    }
+    case x64asm::MOV_R32_R32: {
+      auto reg_1 = instruction->get_operand<x64asm::R32>(0);
+      auto reg_2 = instruction->get_operand<x64asm::R32>(1);
+      auto reg_32 = sym_state->gp[reg_2][31][0];
+      sym_state->set(reg_1, reg_32);
+      break;
+    }
+    case x64asm::MOV_R32_M32: {
+      auto reg_1 = instruction->get_operand<x64asm::R32>(0);
+      auto mem = instruction->get_operand<x64asm::M32>(1);
+
+      auto mem_loc = sym_state->get_addr(mem);
+      DereferenceInfo dereference_info;
+      auto num = sym_state->memory->read(mem_loc, 32, dereference_info).first;
+
+      sym_state->set(reg_1, num);
+      break;
+    }
+    case x64asm::MOVSXD_R64_R32: {
+      auto reg_1 = instruction->get_operand<x64asm::R64>(0);
+      auto reg_2 = instruction->get_operand<x64asm::R32>(1);
+      auto reg_s64_2 = (sym_state->gp[reg_2][31][0]).sign_extend(64);
+      sym_state->set(reg_1, reg_s64_2);
+      break;
+    }
     case x64asm::MOV_R64_R64: { //movq_r64_r64 Arity: 2
       auto reg_1 = instruction->get_operand<x64asm::R64>(0);
       auto reg_2 = instruction->get_operand<x64asm::R64>(1);
@@ -400,7 +446,7 @@ public:
     }
     case x64asm::MOV_R64_IMM64: {
       auto reg_1 = instruction->get_operand<x64asm::R64>(0);
-      auto num = SymBitVector::constant(64,instruction->get_operand<x64asm::Imm64>(1));;
+      auto num = SymBitVector::constant(64,instruction->get_operand<x64asm::Imm64>(1));
       sym_state->set(reg_1, num);
       break;
     }
@@ -413,6 +459,19 @@ public:
       auto num = sym_state->memory->read(mem_loc, 64, dereference_info).first;
 
       sym_state->set(reg_1, num);
+      break;
+    }
+    case x64asm::MOV_M32_R32: {
+      auto mem = instruction->get_operand<x64asm::M32>(0);
+      auto reg = instruction->get_operand<x64asm::R32>(1);
+      auto reg_32 = (sym_state->gp[reg])[31][0];
+
+      auto mem_loc = sym_state->get_addr(mem);
+      DereferenceInfo dereference_info;
+      sym_state->memory->write(mem_loc, reg_32, 32, dereference_info);
+
+      is_star ? info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 32) * loop_count
+              : info.number_of_bits_changed = info.number_of_bits_changed +  SymBitVector::constant(64, 32);
       break;
     }
     case x64asm::MOVDQA_XMM_M128: {
@@ -432,10 +491,10 @@ public:
 
       auto mem_loc = sym_state->get_addr(mem);
       DereferenceInfo dereference_info;
-      auto num = sym_state->memory->write(mem_loc, sym_state->sse[xmm], 128, dereference_info);
+      sym_state->memory->write(mem_loc, sym_state->sse[xmm], 128, dereference_info);
       is_star ? info.number_of_bits_changed = info.number_of_bits_changed + SymBitVector::constant(64, 128) * loop_count
               : info.number_of_bits_changed = info.number_of_bits_changed +  SymBitVector::constant(64, 128);
-
+      break;
     }
     case x64asm::LEA_R32_M16: { //leal_r32_m16 Arity: 2
       auto reg = instruction->get_operand<x64asm::R32>(0);
@@ -533,6 +592,76 @@ public:
       sym_state->set_szp_flags(temp, 32);
       break;
     }
+    case x64asm::CMP_R32_IMM8: {
+      auto reg = instruction->get_operand<x64asm::R32>(0);
+      SymBitVector reg32 = (sym_state->gp[reg])[31][0];
+      auto num = SymBitVector::constant(8,instruction->get_operand<x64asm::Imm8>(1)).zero_extend(32);
+
+      if (is_star)
+      {
+        SymBitVector loop_halting_constrain;
+        auto begin_reg32 = beginning_state[reg][31][0];
+
+        SymBool reg_1_constant = (begin_reg32 == reg32).ite(SymBool::constant(true), SymBool::constant(false));
+        SymBool reg_1_increase = (begin_reg32.s_lt(reg32)).ite(SymBool::constant(true), SymBool::constant(false));
+
+        SymBool if_1 = (reg_1_constant);
+        SymBitVector then_1 = SymBitVector::tmp_var(32); //sus
+
+        SymBool if_2 = (reg_1_increase == SymBool::_true());
+        SymBitVector then_2 = num - reg32;
+        SymBitVector else_2 = reg32 - num;
+
+        SymBitVector ite_2 = if_2.ite(then_2, else_2);
+
+        loop_halting_constrain = if_1.ite(then_1, ite_2);
+        sym_state->add_constraint(loop_halting_constrain.s_gt(SymBitVector::constant(32, 0)));
+
+        SymBitVector temp = reg32 - num;
+        sym_state->set_szp_flags(temp);
+
+        break;
+      }
+
+      auto temp = reg32 - num;
+      sym_state->set_szp_flags(temp, 32);
+      break;
+    }
+    case x64asm::CMP_R32_IMM32: {
+        auto reg = instruction->get_operand<x64asm::R32>(0);
+        SymBitVector reg32 = (sym_state->gp[reg])[31][0];
+        auto num = SymBitVector::constant(32,instruction->get_operand<x64asm::Imm32>(1));
+
+        if (is_star)
+        {
+          SymBitVector loop_halting_constrain;
+          auto begin_reg32 = beginning_state[reg][31][0];
+
+          SymBool reg_1_constant = (begin_reg32 == reg32).ite(SymBool::constant(true), SymBool::constant(false));
+          SymBool reg_1_increase = (begin_reg32.s_lt(reg32)).ite(SymBool::constant(true), SymBool::constant(false));
+
+          SymBool if_1 = (reg_1_constant);
+          SymBitVector then_1 = SymBitVector::tmp_var(32);
+
+          SymBool if_2 = (reg_1_increase == SymBool::_true());
+          SymBitVector then_2 = num - reg32;
+          SymBitVector else_2 = reg32 - num;
+
+          SymBitVector ite_2 = if_2.ite(then_2, else_2);
+
+          loop_halting_constrain = if_1.ite(then_1, ite_2);
+          sym_state->add_constraint(loop_halting_constrain.s_gt(SymBitVector::constant(32, 0)));
+
+          SymBitVector temp = reg32 - num;
+          sym_state->set_szp_flags(temp);
+
+          break;
+        }
+
+        auto temp = reg32 - num;
+        sym_state->set_szp_flags(temp, 32);
+        break;
+    }
     case x64asm::CMP_R64_R64: {
       auto reg_1 = instruction->get_operand<x64asm::R64>(0);
       auto reg_2 = instruction->get_operand<x64asm::R64>(1);
@@ -577,7 +706,7 @@ public:
     }
     default:
       std::cout << "Unhandled instruction type" << std::endl;
-      std::string input; std::cin >> input;
+      //std::string input; std::cin >> input;
 			assert(false);
 		}
     return true;
