@@ -2,25 +2,16 @@
 // Created by andrea on 3/18/25.
 //
 #include "validator.h"
-
 #include "tools/io/state_diff.h"
 #include "src/no_data_validator/RegEx.h"
-#include "src/no_data_validator/validator.h"
 #include "src/no_data_validator/operation.h"
 #include "src/no_data_validator/regexOperations/plusOperation.h"
-#include "src/no_data_validator/regexOperations/empty.h"
+#include "symbolic_instruction_processor.h"
 
-#include <chrono>
-#include <ctime>
-#include <iomanip>
-#include <algorithm>
 #include <set>
 #include <queue>
 
-#include "symbolic_instruction_processor.h"
-
 using namespace std;
-using namespace std::chrono;
 using namespace stoke;
 using namespace x64asm;
 using State = stoke::ProgramAlignmentAutomata::State;
@@ -30,36 +21,7 @@ using Edge = stoke::ProgramAlignmentAutomata::Edge;
 #define SPACE() { std::cout << " " << std::endl;}
 
 bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invariant> inv, ProgramAlignmentAutomata& paa) {
-  /*SymBitVector bit_1 = SymBitVector::constant(1, 5);
-  SymBitVector bit_32 = SymBitVector::constant(32, 4);
-  SymBitVector bit_64 = SymBitVector::constant(64, 8);
-
-  std::cout << "overflow bit_1: " << bit_1 << " with size: " << bit_1.width() << std::endl;
-  std::cout << "overflow bit_1 resized: " << bit_1.sign_extend(32)  << " with size: " << bit_1.sign_extend(32).width() << std::endl;
-
-  auto temp_multiply = bit_32 * bit_64;
-  std::cout << "bit_32 * bit_64: " <<  temp_multiply << " with size: " << temp_multiply.width() << std::endl;
-  temp_multiply = bit_64 * bit_32 ;
-  std::cout << " bit_64 * bit_32: " <<  temp_multiply << " with size: " << temp_multiply.width() << std::endl;
-
-  auto temp_plus = bit_32 + bit_64;
-  std::cout << "bit_32 + bit_64: " <<  temp_plus << " with size: " << temp_plus.width() << std::endl;
-  temp_plus = bit_64 + bit_32;
-  std::cout << "bit_64 + bit_32: " <<  temp_plus << " with size: " << temp_plus.width() << std::endl;
-
-  auto temp_minus = bit_32 - bit_64;
-  std::cout << "bit_32 - bit_64: " <<  temp_minus << " with size: " << temp_minus.width() << std::endl;
-  temp_minus = bit_64 - bit_32;
-  std::cout << "bit_64 - bit_32: " <<  temp_minus << " with size: " << temp_minus.width() << std::endl;
-
-  std::cout << "bit_1: " << bit_1 << " with size: " << bit_1.width() << std::endl;
-  std::cout << "bit_32: " << bit_32 << " with size: " << bit_32.width() << std::endl;
-  std::cout << "bit_64: " << bit_64 << " with size: " << bit_64.width() << std::endl;
-  return true;*/
-  //printing_cfg();
-
-  //std::map<std::tuple<State,State>, std::tuple<std::shared_ptr<Operation>, std::shared_ptr<Operation>>> T; // no support for multiple paths from one state to other
-
+  std::cout << "Building PAA" << std::endl;
   auto S_1 = target_.reachable_begin();
   size_t num_s_1 = target_.num_reachable();
 
@@ -75,14 +37,6 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
     ++S_1;
     S_2 = rewrite_.reachable_begin();
   }
-
-  /*
-  std::cout << "Pairs: " << std::endl;
-  for (auto i : S) {
-    std::cout << "(" << i.first << ", " << i.second << "), ";
-  }
-  std::cout << std::endl;
-  */
 
   std::queue<std::pair<size_t, size_t>> reach;
   std::set<std::pair<size_t, size_t>> visited;
@@ -102,9 +56,8 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
     visited.insert(state);
 
     for (auto pair: S) {
-      INPUT_STOP("NEW PAIRING")
-      std::cout << "qi_1: "<< state.first << "    qj_1: " << state.second << std::endl;
-      std::cout << "qi_2: "<< pair.first << "    qj_2: " << pair.second << std::endl;
+      //std::cout << "qi_1: "<< state.first << "    qj_1: " << state.second << std::endl;
+      //std::cout << "qi_2: "<< pair.first << "    qj_2: " << pair.second << std::endl;
       size_t qi_2 = pair.first;
       size_t qj_2 = pair.second;
       RegEx target_Regex(target_);
@@ -114,24 +67,14 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
 
       if (!target_Regex.getRegex(qi_1, qi_2, target_regex) ||
           !rewrite_Regex.getRegex(qj_1, qj_2, rewrite_regex)) {
-        std::cout << "FALSE 01" << std::endl;
-        //if (qi_1 == 0 && qj_1 == 5 && qi_2 == 0 && qj_2 == 5) { std::string input; std::cin >> input; }
         continue;
       }
 
 
       if (qi_1 == qi_2 && qj_1 == qj_2 && (target_regex->isEmpty() || rewrite_regex->isEmpty())) {
-        std::cout << "FALSE 02" << std::endl;
-        //if (qi_1 == 0 && qj_1 == 5 && qi_2 == 0 && qj_2 == 5) { std::string input; std::cin >> input; }
         continue;
       }
 
-      //if (qi_1 == 3 && qj_1 == 4 && qi_2 == 3 && qj_2 == 4) { std::cout << target_Regex << rewrite_Regex << std::endl; std::string input; std::cin >> input; }
-
-      //std::cout << std::endl;
-      //continue;
-
-      //splitting
       std::vector<std::shared_ptr<Operation>> R_i, R_j;
 
       if (std::dynamic_pointer_cast<PlusOperation>(target_regex)) {
@@ -149,70 +92,36 @@ bool NoDataValidator::build_paa_for_alignment_predicate(std::shared_ptr<Invarian
       //comparing
       for (auto r_i : R_i) {
         for (auto r_j : R_j) {
-          std::cout << "r_i: " << *r_i << "   r_j: " << *r_j << std::endl;
+          //std::cout << "r_i: " << *r_i << "   r_j: " << *r_j << std::endl;
           std::map<string, uint64_t> star_map;
 
-          //std::shared_ptr<Operation> rc_i, rc_j; // may not be needed, if SAT initialized in check
           if (alignment_checker_->check(inv, &target_, &rewrite_, r_i, r_j, false, qi_1, qi_2, qj_1, qj_2, star_map)) {
             State from_state(qi_1, qj_1);
             State to_state(qi_2, qj_2);
 
             CfgPath target_path;
             CfgPath rewrite_path;
-            std::cout << "BEFORE" << std::endl;
 
             target_Regex.get_CfgPath(target_path, r_i, star_map);
             rewrite_Regex.get_CfgPath(rewrite_path, r_j, star_map);
 
-            //if (!target_path.empty()) { target_path.pop_back();}
-            //if (!rewrite_path.empty()) { rewrite_path.pop_back(); } // CfgPath doesn't contain to State but regex does TODO:fix
-
             Edge edge(to_state, target_path, rewrite_path);
             edge.from = from_state;
-            //if (qi_1 == 0 && qj_1 == 5 && edge.from.ts == 0 && edge.from.rs == 5)
-            //{
-              //std::cout << "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE" << std::endl;
-              //std::string input; std::cin >> input;
-            //}
-            //edge.from = from_state;
-            //add_edge_to_paa(edge, paa);
-            //if (qi_1 == 3 && qj_1 == 4 && qi_2 == 3 && qj_2 == 4) { std::string input; std::cin >> input; }
-            paa.add_edge(edge); // should substitute T
 
-            //std::cout << "start" << from_state << std::endl;
-            //std::cout << "end" << to_state << std::endl;
-            //std::cout << edge << std::endl;
-            //std::cout << "********************************" << std::endl; std::string input; std::cin >> input;
-
-            //T[std::make_pair(from_state, to_state)] = std::make_pair(r_i, r_j);
+            paa.add_edge(edge);
 
             reach.push(std::make_pair((size_t) qi_2, qj_2));
 
           }
-          //std::string input; std::cin >> input;
         }
       }
-
-      //if (qi_1 == 3 && qj_1 == 3 && qi_2 == 3 && qj_2 == 5)
-      //{
-      //std::string input; std::cin >> input;
-      //}
-
     }
   }
 
-  std::cout << "************PAA*********"<< std::endl;
-  //
   paa.simplify();
-  //paa.remove_prefixes();
-  paa.print_all();
-  //std::string input; std::cin >> input;
-  //paa.remove_prefixes();
-  //
+  //paa.print_all();
   return true;
 }
-
-//void NoDataValidator::add_edge_to_paa(Edge& edge, ProgramAlignmentAutomata& paa) {}
 
 //debuging function
 void NoDataValidator::printing_cfg() {

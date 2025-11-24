@@ -3,7 +3,6 @@
 #include "concatenationOperation.h"
 #include "starOperation.h"
 
-
 using namespace std;
 using namespace stoke;
 

@@ -3,7 +3,6 @@
 #include "concatenationOperation.h"
 #include "empty.h"
 
-
 using namespace std;
 using namespace stoke;
 

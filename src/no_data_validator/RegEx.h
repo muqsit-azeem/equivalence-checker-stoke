@@ -6,11 +6,10 @@
 #define REGEX_H
 
 #include "src/no_data_validator/operation.h"
-
-#include <unordered_set>
-
 #include "src/cfg/paths.h"
 #include "src/solver/smtsolver.h"
+
+#include <unordered_set>
 
 namespace stoke {
 

@@ -10,7 +10,6 @@
 #include "RegEx.h"
 #include "symbolic_instruction_processor.h"
 #include "../cfg/cfg.h"
-
 #include "../solver/smtsolver.h"
 #include "../validator/invariant.h"
 #include "../validator/obligation_checker.h"
@@ -24,9 +23,6 @@ public:
   SmtAlignmentChecker(SMTSolver* solver) :
   solver_(solver)
   {
-    //basic_block_ghosts_ = true;
-    //nacl_ = false;
-    //fixpoint_up_ = false;
     separate_stack_ = false;
   }
 
@@ -47,22 +43,11 @@ public:
     return *this;
   }
 
-  /*
-  SmtAlignmentChecker& set_fixpoint_up(bool b) {
-    fixpoint_up_ = b;
-    return *this;
-  }
-  */
-
-
 private:
-  //bool fixpoint_up_;
   bool separate_stack_;
-
   SMTSolver* solver_;
 
   bool smallestStar(std::vector<string> star_variables, std::map<string, uint64_t>& star_map, std::vector<SymBool>& bool_vector);
-
 };
 
 } // stoke

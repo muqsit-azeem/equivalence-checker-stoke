@@ -4,31 +4,28 @@
 
 #ifndef PROCESSINGINFO_H
 #define PROCESSINGINFO_H
-#include <gmpxx.h>
+
 #include "../symstate/bitvector.h"
 
 namespace stoke {
 
-  class ProcessingInfo {
+class ProcessingInfo {
+public:
 
-  public:
+  ProcessingInfo() {
+    previous_state = std::numeric_limits<size_t>::max();
 
-    ProcessingInfo() {
-      previous_state = std::numeric_limits<size_t>::max();
+    prev_state_ends_with_jump = false;
+  }
 
-      prev_state_ends_with_jump = false;
-    }
+  size_t previous_state;
 
-    size_t previous_state;
-
-    bool prev_state_ends_with_jump;
-    std::vector<SymBool> star_constraints;
-    std::vector<std::string> star_variable_names;
-    std::vector<SymBool> memory_axioms;
+  bool prev_state_ends_with_jump;
+  std::vector<SymBool> star_constraints;
+  std::vector<std::string> star_variable_names;
+  std::vector<SymBool> memory_axioms;
 	SymBitVector number_of_bits_changed = SymBitVector::constant(64, 0);
-
-  };
-
 };
+}
 
 #endif //PROCESSINGINFO_H
