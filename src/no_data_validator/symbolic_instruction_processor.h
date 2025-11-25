@@ -338,7 +338,6 @@ private:
       break;
     }
     case x64asm::ADD_R64_IMM8: {
-      break;
       auto reg = instruction->get_operand<x64asm::R64>(0);
       SymBitVector num = SymBitVector::constant(8,instruction->get_operand<x64asm::Imm8>(1)).sign_extend(64);
 
@@ -791,7 +790,10 @@ private:
       sym_state->set_szp_flags(temp, 64);
       break;
     }
-    //case x64asm::CLTQ //doesnt exist?
+    case x64asm::CDQE: {
+      auto temp = sym_state->gp[eax][31][0];
+      sym_state->set(rax, temp.sign_extend(64));
+    }
     default:
       std::cout << "Unhandled instruction type" << std::endl;
 			assert(false);
