@@ -502,8 +502,7 @@ private:
               : info.number_of_bits_changed = info.number_of_bits_changed +  SymBitVector::constant(64, 32);
       break;
     }
-    //case x64asm::MOVS_R64_R32: {}
-    case x64asm::MOVDQU_XMM_M128: //sus
+    case x64asm::MOVDQU_XMM_M128:
     case x64asm::MOVDQA_XMM_M128: {
       auto reg_1 = instruction->get_operand<x64asm::Xmm>(0);
       auto mem = instruction->get_operand<x64asm::M128>(1);
@@ -756,7 +755,6 @@ private:
       break;
     }
     case x64asm::CMP_R64_R64: {
-      //break;
       auto reg_1 = instruction->get_operand<x64asm::R64>(0);
       auto reg_2 = instruction->get_operand<x64asm::R64>(1);
 
@@ -793,9 +791,10 @@ private:
     case x64asm::CDQE: {
       auto temp = sym_state->gp[eax][31][0];
       sym_state->set(rax, temp.sign_extend(64));
+      break;
     }
     default:
-      std::cout << "Unhandled instruction type" << std::endl;
+      std::cout << "Unhandled instruction type: " << opcode << std::endl;
 			assert(false);
 		}
     return true;
