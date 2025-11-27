@@ -528,18 +528,51 @@ private:
       break;
     }
     case x64asm::PSHUFD_XMM_M128_IMM8: {
-      /*auto xmm = instruction->get_operand<x64asm::Xmm>(0);
+      auto xmm = instruction->get_operand<x64asm::Xmm>(0);
       auto mem = instruction->get_operand<x64asm::M128>(1);
-      auto mask = instruction->get_operand<x64asm::Imm8>(2);
+      SymBitVector mask_bit = SymBitVector::constant(64, instruction->get_operand<x64asm::Imm8>(2));
 
-      auto temp;
-      sym_state->sse[xmm] = temp;*/
+      auto mask_1 = mask_bit[1][0].zero_extend(128);
+      auto mask_2 = mask_bit[3][2].zero_extend(128);
+      auto mask_3 = mask_bit[5][4].zero_extend(128);
+      auto mask_4 = mask_bit[7][6].zero_extend(128);
+
+      auto mem_loc = sym_state->get_addr(mem);
+      DereferenceInfo dereference_info;
+      auto mem_num = sym_state->memory->read(mem_loc, 128, dereference_info).first;
+
+      auto mem_1 = mem_num[31][0].zero_extend(128);
+      auto mem_2 = mem_num[63][32].zero_extend(128);
+      auto mem_3 = mem_num[95][64].zero_extend(128);
+      auto mem_4 = mem_num[127][96].zero_extend(128);
+
+      auto temp = (mem_1 << (mask_1 * SymBitVector::constant(128, 32))) |
+                              (mem_2 << (mask_2 * SymBitVector::constant(128, 32))) |
+                              (mem_3 << (mask_3 * SymBitVector::constant(128, 32))) |
+                              (mem_4 << (mask_4 * SymBitVector::constant(128, 32)));
+      sym_state->sse[xmm] = temp;
       break;
     }
     case x64asm::PSHUFD_XMM_XMM_IMM8: {
-        /*auto xmm = instruction->get_operand<x64asm::Xmm>(0);
-        auto mem = instruction->get_operand<x64asm::Xmm>(1);
-        auto mask = instruction->get_operand<x64asm::Imm8>(2);*/
+      auto xmm_1 = instruction->get_operand<x64asm::Xmm>(0);
+      auto xmm_2 = instruction->get_operand<x64asm::Xmm>(1);
+      SymBitVector mask_bit = SymBitVector::constant(64, instruction->get_operand<x64asm::Imm8>(2));
+
+      auto mask_1 = mask_bit[1][0].zero_extend(128);
+      auto mask_2 = mask_bit[3][2].zero_extend(128);
+      auto mask_3 = mask_bit[5][4].zero_extend(128);
+      auto mask_4 = mask_bit[7][6].zero_extend(128);
+
+      SymBitVector source = sym_state->sse[xmm_2];
+      auto source_1 = source[31][0].zero_extend(128);
+      auto source_2 = source[63][32].zero_extend(128);
+      auto source_3 = source[95][64].zero_extend(128);
+      auto source_4 = source[127][96].zero_extend(128);
+      auto temp = (source_1 << (mask_1 * SymBitVector::constant(128, 32))) |
+                              (source_2 << (mask_2 * SymBitVector::constant(128, 32))) |
+                              (source_3 << (mask_3 * SymBitVector::constant(128, 32))) |
+                              (source_4 << (mask_4 * SymBitVector::constant(128, 32)));
+      sym_state->sse[xmm_1] = temp;
       break;
     }
     case x64asm::CMOVG_R64_R64: {
