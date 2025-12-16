@@ -32,7 +32,7 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
               std::map<string, uint64_t>& star_map
               ) {
 
-  //std::cout << std::endl << "p = " << *p << " q: " << *q << std::endl;
+
   bool separate_stack = separate_stack_ || override_separate_stack;
 
   SymState target_sym_state("target");
@@ -125,8 +125,6 @@ bool SmtAlignmentChecker::check( std::shared_ptr<Invariant> inv,
   star_variables.insert(star_variables.end(), rewrite_processing_info.star_variable_names.begin(), rewrite_processing_info.star_variable_names.end());
   bool result = smallestStar(star_variables, star_map,bool_vector);
 
-  //std::cout << "RESULT: " << result << std::endl;
-  //std::cout << "ERROR: " << solver_->has_error() << std::endl;
   if (solver_->has_error()) {
     std::cout << solver_->get_error()<< std::endl;
     assert(false);

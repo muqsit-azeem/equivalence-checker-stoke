@@ -38,7 +38,6 @@ public:
 
   NoDataValidator(const NoDataValidator& rhs) : DdecValidator(rhs) {}
 
-  void printing_cfg();
   bool build_paa_for_alignment_predicate(std::shared_ptr<Invariant> inv, ProgramAlignmentAutomata& paa) override;
 
 private:
